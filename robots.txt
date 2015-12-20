@@ -1,4 +1,4 @@
 User-agent: *
 Disallow: 
 
-Sitemap: http://ul1tka.github.io/sitemap.xml 
+Sitemap: http://lazarenko.me/sitemap.xml 

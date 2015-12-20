@@ -1,75 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://ul1tka.github.io/devirtualization/</loc>
+    <loc>http://lazarenko.me/devirtualization/</loc>
     <lastmod>2013-12-15T21:12:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/coding-hungover/</loc>
+    <loc>http://lazarenko.me/coding-hungover/</loc>
     <lastmod>2013-12-07T16:03:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/smart-getopt/</loc>
+    <loc>http://lazarenko.me/smart-getopt/</loc>
     <lastmod>2013-12-03T08:47:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/nothing-is-constant/</loc>
+    <loc>http://lazarenko.me/nothing-is-constant/</loc>
     <lastmod>2013-05-01T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/wide-pointers/</loc>
+    <loc>http://lazarenko.me/wide-pointers/</loc>
     <lastmod>2013-04-28T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/throw-stacktrace/</loc>
+    <loc>http://lazarenko.me/throw-stacktrace/</loc>
     <lastmod>2013-04-16T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/ask-smart/</loc>
+    <loc>http://lazarenko.me/ask-smart/</loc>
     <lastmod>2013-03-29T22:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/pyusb/</loc>
+    <loc>http://lazarenko.me/pyusb/</loc>
     <lastmod>2013-03-04T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/raii/</loc>
+    <loc>http://lazarenko.me/raii/</loc>
     <lastmod>2013-02-27T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/marvell-88E1111-reset/</loc>
+    <loc>http://lazarenko.me/marvell-88E1111-reset/</loc>
     <lastmod>2013-02-27T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/signal-handler/</loc>
+    <loc>http://lazarenko.me/signal-handler/</loc>
     <lastmod>2013-01-15T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/vector-erase/</loc>
+    <loc>http://lazarenko.me/vector-erase/</loc>
     <lastmod>2013-01-14T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/switch/</loc>
+    <loc>http://lazarenko.me/switch/</loc>
     <lastmod>2013-01-13T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/fpga-programming-where-to-begin/</loc>
+    <loc>http://lazarenko.me/fpga-programming-where-to-begin/</loc>
     <lastmod>2012-12-31T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/cpp-show-predefined-macros/</loc>
+    <loc>http://lazarenko.me/cpp-show-predefined-macros/</loc>
     <lastmod>2010-10-17T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/archives/</loc>
+    <loc>http://lazarenko.me/blog/archives/</loc>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/</loc>
+    <loc>http://lazarenko.me/</loc>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/categories/tech/</loc>
+    <loc>http://lazarenko.me/blog/categories/tech/</loc>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/categories/life/</loc>
+    <loc>http://lazarenko.me/blog/categories/life/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/2/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/3/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/4/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/5/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/6/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/7/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/8/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/9/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/10/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/11/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/12/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/13/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/14/</loc>
+  </url>
+  <url>
+    <loc>http://lazarenko.me/posts/15/</loc>
   </url>
 </urlset>

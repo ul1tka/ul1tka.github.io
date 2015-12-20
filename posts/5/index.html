@@ -1,0 +1,470 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Vlad Lazarenko</title>
+  <meta name="author" content="Vlad Lazarenko">
+
+  
+  <meta name="description" content="When talking about pointers, we generally assume it is something that can be represented by void* pointer which has a size of 8 bytes on the x86_64 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://ul1tka.github.io/posts/5/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Vlad Lazarenko" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Vlad Lazarenko</a></h1>
+  
+    <h2>... making all this up as I go along</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="ul1tka.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/wide-pointers/">Why C++ Member Function Pointers Are 16 Bytes Wide</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-04-28'><span class='date'><span class='date-month'>Apr</span> <span class='date-day'>28</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>When talking about pointers, we generally assume it is something that can be represented by <code>void*</code> pointer which has a size of 8 bytes on the x86_64 architecture. For instance, here is an excerpt from a <a href="http://en.wikipedia.org/wiki/X86-64#Architectural_features">Wikipedia article about x86_64</a>:</p>
+
+<blockquote><p>Pushes and pops on the stack are always in 8-byte strides, and <strong>pointers are 8 bytes wide</strong>.</p></blockquote>
+
+<p>From the CPU point of view, pointer is nothing but a memory address, and all memory addresses are represented by 64-bit on the x86_64, so the assumption about 8 bytes is correct. It is also not that hard to verify this by simply printing sizes of pointers of different types:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &lt;iostream&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span>
+</span><span class='line'>        <span class="s">&quot;sizeof(int*)      == &quot;</span> <span class="o">&lt;&lt;</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>        <span class="s">&quot;sizeof(double*)   == &quot;</span> <span class="o">&lt;&lt;</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">double</span><span class="o">*</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>        <span class="s">&quot;sizeof(void(*)()) == &quot;</span> <span class="o">&lt;&lt;</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="p">(</span><span class="o">*</span><span class="p">)())</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Compile and run the above program, and it will tell that all pointers are of size 8:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="err">$</span> <span class="n">uname</span> <span class="o">-</span><span class="n">i</span>
+</span><span class='line'><span class="n">x86_64</span>
+</span><span class='line'><span class="err">$</span> <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="p">.</span><span class="o">/</span><span class="n">example</span><span class="p">.</span><span class="n">cc</span>
+</span><span class='line'><span class="err">$</span> <span class="p">.</span><span class="o">/</span><span class="n">a</span><span class="p">.</span><span class="n">out</span>
+</span><span class='line'><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="o">*</span><span class="p">)</span>      <span class="o">==</span> <span class="mi">8</span>
+</span><span class='line'><span class="k">sizeof</span><span class="p">(</span><span class="kt">double</span><span class="o">*</span><span class="p">)</span>   <span class="o">==</span> <span class="mi">8</span>
+</span><span class='line'><span class="k">sizeof</span><span class="p">(</span><span class="kt">void</span><span class="p">(</span><span class="o">*</span><span class="p">)())</span> <span class="o">==</span> <span class="mi">8</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In C++, however, there is one exception — pointer to a member function. Interestingly enough, the size of a pointer to a member function is twice the size of any other pointer. This can be easily verified with this simple program which would print “16”:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &lt;iostream&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">Foo</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">bar</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">&amp;</span><span class="n">Foo</span><span class="o">::</span><span class="n">bar</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Does this mean that Wikipedia is wrong? No, not at all. From the hardware point of view all pointers are still 8 bytes wide. So what is a pointer to a member function then? It is a feature of the C++ language, a concept that does not map directly to hardware and is being implemented in runtime (by compilers) resulting in a slight overhead that oftentimes incurs a performance penalty. The C++ language specification is not concerned with implementation details very much and there is nothing explaining this type of pointers. Luckily, there is Itanium C++ ABI specification that devotes itself to standardizing implementation details of the C++ runtime — it explains, for example, how virtual tables, RTTI and exceptions are implemented, and it also explains member pointers in §2.3:</p>
+
+<blockquote><p>A pointer to member function is a pair as follows:</p>
+
+<p>ptr:</p>
+
+<p>For a non-virtual function, this field is a simple function pointer. For a virtual function, it is 1 plus the virtual table offset (in bytes) of the function, represented as a ptrdiff_t. The value zero represents a NULL pointer, independent of the adjustment field value below.</p>
+
+<p>adj:</p>
+
+<p>The required adjustment to this, represented as a ptrdiff_t.</p></blockquote>
+
+<p>So a member function pointer is 16 bytes instead of 8 because along with a simple function pointer it also must store the information about how to adjust “this” pointer (something that is always passed to non-static member functions implicitly). What ABI spec does not say is why and when such an adjustment is required. It might not be that obvious at first. Let’s take a look at the following class hierarchy:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">struct</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">foo</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="n">pad0</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">B</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">bar</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span> <span class="p">}</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="n">pad2</span><span class="p">[</span><span class="mi">64</span><span class="p">];</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">C</span> <span class="p">:</span> <span class="n">A</span><span class="p">,</span> <span class="n">B</span>
+</span><span class='line'><span class="p">{</span> <span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Both A and B have a non-static member functions and a data member. Both of those methods can access data member of their class through an implicitly passed “this” pointer. In order to access any data member, the offset from the base address of the class object containing it, represented as a ptrdiff_t, is applied to “this” pointer. Things start to get complicated with multiple inheritance. What happens when we have a class C inherit both A and B? The compiler would take A and B and place them together in memory, where B comes after A. Therefore, methods of class A and methods of class B would “see” a different value of “this” pointer. This can be easily verified in practice, for example:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &lt;iostream&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">foo</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;A&#39;s this: &quot;</span> <span class="o">&lt;&lt;</span> <span class="k">this</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="n">pad0</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">B</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">bar</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;B&#39;s this: &quot;</span> <span class="o">&lt;&lt;</span> <span class="k">this</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="n">pad2</span><span class="p">[</span><span class="mi">64</span><span class="p">];</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">C</span> <span class="p">:</span> <span class="n">A</span><span class="p">,</span> <span class="n">B</span>
+</span><span class='line'><span class="p">{</span> <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">C</span> <span class="n">obj</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">obj</span><span class="p">.</span><span class="n">foo</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">obj</span><span class="p">.</span><span class="n">bar</span><span class="p">();</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="err">$</span> <span class="n">g</span><span class="o">++</span> <span class="o">-</span><span class="n">Wall</span> <span class="o">-</span><span class="n">o</span> <span class="n">test</span> <span class="p">.</span><span class="o">/</span><span class="n">test</span><span class="p">.</span><span class="n">cc</span> <span class="o">&amp;&amp;</span> <span class="p">.</span><span class="o">/</span><span class="n">test</span>
+</span><span class='line'><span class="n">A</span><span class="err">&#39;</span><span class="n">s</span> <span class="k">this</span><span class="o">:</span> <span class="mh">0x7fff57ddfb48</span>
+</span><span class='line'><span class="n">B</span><span class="err">&#39;</span><span class="n">s</span> <span class="k">this</span><span class="o">:</span> <span class="mh">0x7fff57ddfb68</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see, “this” pointer’s value passed to B’s method is greater than one passed to A’s method by 32 bytes – an exact size of class A. But what happens when we have the following function that calls a method of class C by pointer?</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="kt">void</span> <span class="nf">call_by_ptr</span><span class="p">(</span><span class="k">const</span> <span class="n">C</span> <span class="o">&amp;</span><span class="n">obj</span><span class="p">,</span> <span class="kt">void</span> <span class="p">(</span><span class="n">C</span><span class="o">::*</span><span class="n">mem_func</span><span class="p">)()</span> <span class="k">const</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">(</span><span class="n">obj</span><span class="p">.</span><span class="o">*</span><span class="n">mem_func</span><span class="p">)();</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Depending on what method is being called, a different value of “this” must be passed. But the “call_by_ptr” function doesn’t know whether it got a pointer to “foo()” or a pointer to “bar()”. The only time when this information is available is when address of either of those methods is taken. And that’s why a pointer to a member function also has information about how to adjust “this” before calling a method. Now, let’s put all of that together into a simple program that demonstrates what is going on “under the hood”:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="cp">#include &lt;iostream&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">foo</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;A&#39;s this:</span><span class="se">\t</span><span class="s">&quot;</span> <span class="o">&lt;&lt;</span> <span class="k">this</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="n">pad0</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">B</span> <span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">bar</span><span class="p">()</span> <span class="k">const</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;B&#39;s this:</span><span class="se">\t</span><span class="s">&quot;</span> <span class="o">&lt;&lt;</span> <span class="k">this</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="n">pad2</span><span class="p">[</span><span class="mi">64</span><span class="p">];</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">C</span> <span class="p">:</span> <span class="n">A</span><span class="p">,</span> <span class="n">B</span>
+</span><span class='line'><span class="p">{</span> <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">call_by_ptr</span><span class="p">(</span><span class="k">const</span> <span class="n">C</span> <span class="o">&amp;</span><span class="n">obj</span><span class="p">,</span> <span class="kt">void</span> <span class="p">(</span><span class="n">C</span><span class="o">::*</span><span class="n">mem_func</span><span class="p">)()</span> <span class="k">const</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="o">*</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">memcpy</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">mem_func</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">mem_func</span><span class="p">));</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;------------------------------</span><span class="se">\n</span><span class="s">&quot;</span>
+</span><span class='line'>        <span class="s">&quot;Object ptr:</span><span class="se">\t</span><span class="s">&quot;</span> <span class="o">&lt;&lt;</span> <span class="o">&amp;</span><span class="n">obj</span> <span class="o">&lt;&lt;</span>
+</span><span class='line'>        <span class="s">&quot;</span><span class="se">\n</span><span class="s">Function ptr:</span><span class="se">\t</span><span class="s">&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;&lt;</span>
+</span><span class='line'>        <span class="s">&quot;</span><span class="se">\n</span><span class="s">Pointer adj:</span><span class="se">\t</span><span class="s">&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">(</span><span class="n">obj</span><span class="p">.</span><span class="o">*</span><span class="n">mem_func</span><span class="p">)();</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">C</span> <span class="n">obj</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">call_by_ptr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">C</span><span class="o">::</span><span class="n">foo</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">call_by_ptr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">C</span><span class="o">::</span><span class="n">bar</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The above program prints the following:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="o">------------------------------</span>
+</span><span class='line'><span class="n">Object</span> <span class="nl">ptr</span><span class="p">:</span> <span class="mh">0x7fff535dfb28</span>
+</span><span class='line'><span class="n">Function</span> <span class="nl">ptr</span><span class="p">:</span>   <span class="mh">0x10c620cac</span>
+</span><span class='line'><span class="n">Pointer</span> <span class="nl">adj</span><span class="p">:</span>    <span class="mi">0</span>
+</span><span class='line'><span class="n">A</span><span class="err">&#39;</span><span class="n">s</span> <span class="k">this</span><span class="o">:</span>    <span class="mh">0x7fff535dfb28</span>
+</span><span class='line'><span class="o">------------------------------</span>
+</span><span class='line'><span class="n">Object</span> <span class="nl">ptr</span><span class="p">:</span> <span class="mh">0x7fff535dfb28</span>
+</span><span class='line'><span class="n">Function</span> <span class="nl">ptr</span><span class="p">:</span>   <span class="mh">0x10c620cfe</span>
+</span><span class='line'><span class="n">Pointer</span> <span class="nl">adj</span><span class="p">:</span>    <span class="mh">0x20</span>
+</span><span class='line'><span class="n">B</span><span class="err">&#39;</span><span class="n">s</span> <span class="k">this</span><span class="o">:</span>    <span class="mh">0x7fff535dfb48</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Hopefully that clears things up a little bit.</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/posts/6">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/posts/4">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/devirtualization/">C++ Devirtualization</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/coding-hungover/">Coding While Hungover</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/smart-getopt/">Smart Command Line Options Parsing</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/nothing-is-constant/">How Constant Is a Constant?</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/wide-pointers/">Why C++ Member Function Pointers Are 16 Bytes Wide</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/throw-stacktrace/">C++ Exceptions, Stack Trace and GDB Automation</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/ask-smart/">Ask Smart Questions and You Will Succeed</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2010-2015 - <a href="mailto:vlad@lazarenko.me">Vlad Lazarenko</a> -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

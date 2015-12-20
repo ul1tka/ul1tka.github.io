@@ -5,11 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Category: Life - Vlad Lazarenko</title>
+  <title>Vlad Lazarenko</title>
   <meta name="author" content="Vlad Lazarenko">
 
   
-  <meta name="description" content="Category: life">
+  <meta name="description" content="Every C and C++ compiler has several object-like macros that are implicitly defined and can be used without supplying their definitions on the &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +18,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://ul1tka.github.io/blog/categories/life/">
+  <link rel="canonical" href="http://ul1tka.github.io/posts/15/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Vlad Lazarenko" type="application/atom+xml">
@@ -63,54 +63,67 @@
 </nav>
   <div id="main">
     <div id="content">
-      <div>
-<article role="article">
+      <div class="blog-index">
   
+  
+  
+    <article>
+      
   <header>
-    <h1 class="entry-title">Category: Life</h1>
+    
+      <h1 class="entry-title"><a href="/blog/cpp-show-predefined-macros/">Predefined Macros</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2010-10-17'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2010</span></span> <span class='time'>12:00 am</span></time>
+        
+      </p>
     
   </header>
-  
-  <div id="blog-archives" class="category">
 
 
+  <div class="entry-content"><p>Every C and C++ compiler has several object-like macros that are implicitly defined and can be used  without supplying their definitions on the command line or through including header files. Such macros are called &ldquo;predefined&rdquo; and can help figure out for what architecture you compile for, on what platform, if the source code being compiled is C or C++, and even tell the language standard of the code being used.</p>
 
-  
-  <h2>2013</h2>
+<p>All predefined macros are described in GCC online documentation. However, not all of them are guaranteed to be defined. Sometimes it is helpful to see a list of macros defined by the compiler with their values, if any. To do that, run a preprocessor with zero input, using the following command:</p>
 
-<article>
-  
-<h1><a href="/blog/coding-hungover/">Coding While Hungover</a></h1>
-<time datetime="2013-12-07T16:03:00-05:00" pubdate><span class='month'>Dec</span> <span class='day'>07</span> <span class='year'>2013</span></time>
+<pre><code>cpp -dM &lt;/dev/null
+</code></pre>
 
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/life/'>life</a></span>
-</footer>
+<p>This will produce the output like this:</p>
 
-
-</article>
-
-
-
-<article>
-  
-<h1><a href="/blog/ask-smart/">Ask Smart Questions and You Will Succeed</a></h1>
-<time datetime="2013-03-29T22:00:00-04:00" pubdate><span class='month'>Mar</span> <span class='day'>29</span> <span class='year'>2013</span></time>
-
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/life/'>life</a></span>
-</footer>
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#define __unix__ 1
+</span><span class='line'>#define __x86_64 1
+</span><span class='line'>#define __DBL_MIN_10_EXP__ (-307)
+</span><span class='line'>#define __FINITE_MATH_ONLY__ 0
+</span><span class='line'>#define __GNUC_PATCHLEVEL__ 3</span></code></pre></td></tr></table></div></figure>
 
 
-</article>
-
+<p>From the above output we can tell that code is being compiled for x86_64 architecture. The output may change depending on the platform and/or compiler settings.</p>
 </div>
-
   
-</article>
+  
 
+
+    </article>
+  
+  <div class="pagination">
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/posts/14">Newer &rarr;</a>
+    
+  </div>
 </div>
-
 <aside class="sidebar">
   
     <section>
@@ -154,7 +167,6 @@
 
   
 </aside>
-
 
     </div>
   </div>

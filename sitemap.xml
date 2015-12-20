@@ -1,63 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/12/15/devirtualize/</loc>
+    <loc>http://ul1tka.github.io/blog/devirtualization/</loc>
     <lastmod>2013-12-15T21:12:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/12/07/coding-hungover/</loc>
+    <loc>http://ul1tka.github.io/blog/coding-hungover/</loc>
     <lastmod>2013-12-07T16:03:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/12/03/smart-getopt/</loc>
+    <loc>http://ul1tka.github.io/blog/smart-getopt/</loc>
     <lastmod>2013-12-03T08:47:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/05/01/constant/</loc>
+    <loc>http://ul1tka.github.io/blog/nothing-is-constant/</loc>
     <lastmod>2013-05-01T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/04/28/wide-pointers/</loc>
+    <loc>http://ul1tka.github.io/blog/wide-pointers/</loc>
     <lastmod>2013-04-28T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/04/16/throw-stacktrace/</loc>
+    <loc>http://ul1tka.github.io/blog/throw-stacktrace/</loc>
     <lastmod>2013-04-16T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/03/29/ask-smart/</loc>
+    <loc>http://ul1tka.github.io/blog/ask-smart/</loc>
     <lastmod>2013-03-29T22:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/03/04/pyusb/</loc>
+    <loc>http://ul1tka.github.io/blog/pyusb/</loc>
     <lastmod>2013-03-04T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/02/27/raii/</loc>
+    <loc>http://ul1tka.github.io/blog/raii/</loc>
     <lastmod>2013-02-27T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/02/27/marvell-reset/</loc>
+    <loc>http://ul1tka.github.io/blog/marvell-88E1111-reset/</loc>
     <lastmod>2013-02-27T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/01/15/signal-handler/</loc>
+    <loc>http://ul1tka.github.io/blog/signal-handler/</loc>
     <lastmod>2013-01-15T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/01/14/vector-erase/</loc>
+    <loc>http://ul1tka.github.io/blog/vector-erase/</loc>
     <lastmod>2013-01-14T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2013/01/13/switch/</loc>
+    <loc>http://ul1tka.github.io/blog/switch/</loc>
     <lastmod>2013-01-13T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2012/12/31/fpga-where-to-begin/</loc>
+    <loc>http://ul1tka.github.io/blog/fpga-programming-where-to-begin/</loc>
     <lastmod>2012-12-31T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/2010/10/17/predefined-macros/</loc>
+    <loc>http://ul1tka.github.io/blog/cpp-show-predefined-macros/</loc>
     <lastmod>2010-10-17T00:00:00-04:00</lastmod>
   </url>
   <url>
@@ -74,5 +74,44 @@
   </url>
   <url>
     <loc>http://ul1tka.github.io/posts/2/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/3/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/4/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/5/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/6/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/7/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/8/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/9/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/10/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/11/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/12/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/13/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/14/</loc>
+  </url>
+  <url>
+    <loc>http://ul1tka.github.io/posts/15/</loc>
   </url>
 </urlset>

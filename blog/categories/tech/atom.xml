@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Category: Tech | My Octopress Blog]]></title>
+  <title><![CDATA[Category: Tech | Vlad Lazarenko]]></title>
   <link href="http://ul1tka.github.io/blog/categories/tech/atom.xml" rel="self"/>
   <link href="http://ul1tka.github.io/"/>
-  <updated>2015-12-20T16:04:22-05:00</updated>
+  <updated>2015-12-20T16:46:09-05:00</updated>
   <id>http://ul1tka.github.io/</id>
   <author>
-    <name><![CDATA[Your Name]]></name>
-    
+    <name><![CDATA[Vlad Lazarenko]]></name>
+    <email><![CDATA[vlad@lazarenko.me]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[C++ Devirtualization]]></title>
-    <link href="http://ul1tka.github.io/blog/2013/12/15/devirtualize/"/>
+    <link href="http://ul1tka.github.io/blog/devirtualization/"/>
     <updated>2013-12-15T21:12:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/2013/12/15/devirtualize</id>
+    <id>http://ul1tka.github.io/blog/devirtualization</id>
     <content type="html"><![CDATA[<p>Using a virtual dispatch might get relatively expensive in terms of clock cycles due to multiple levels of <a href="http://en.wikipedia.org/wiki/Indirection">indirections</a> including <a href="http://en.wikipedia.org/wiki/Indirect_branch">indirect branching</a> as well as <a href="http://gcc.gnu.org/onlinedocs/gcc/Bound-member-functions.html"><code>this</code> pointer adjustment</a>. Wise programmers do not use virtual dispatch without a good reason but oftentimes it is required either by design or when creating non-template reusable components/libraries and the final implementation of some parts of the program is not known.</p>
 
 <p>Optimizing compilers do a great deal of work trying to optimize virtual dispatch as much as possible, sometimes even eliminating it in the end program entirely.  Let&rsquo;s take a quick look at how compilers implement virtual dispatch, how it can be optimized away and go over a few tricks that programmers can do to achieve better runtime performance.</p>
@@ -385,9 +385,9 @@ int do_something(B&amp; b) {
   
   <entry>
     <title type="html"><![CDATA[Smart Command Line Options Parsing]]></title>
-    <link href="http://ul1tka.github.io/blog/2013/12/03/smart-getopt/"/>
+    <link href="http://ul1tka.github.io/blog/smart-getopt/"/>
     <updated>2013-12-03T08:47:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/2013/12/03/smart-getopt</id>
+    <id>http://ul1tka.github.io/blog/smart-getopt</id>
     <content type="html"><![CDATA[<p>A countless number of command line programs have been written since the invention of computers. Most of them parse command line options and spew out errors and usage messages if a user enters an unknown option or simply makes a typo. Examples are not far to seek. Make a typo trying to commit your changes into SVN repository and <a href="http://en.wikipedia.org/wiki/Apache_Subversion">Subversion</a> would bail out with errors:</p>
 
 <pre><code class="bash">$ svn commir
@@ -607,9 +607,9 @@ Did you mean one of these?
   
   <entry>
     <title type="html"><![CDATA[How Constant Is a Constant?]]></title>
-    <link href="http://ul1tka.github.io/blog/2013/05/01/constant/"/>
+    <link href="http://ul1tka.github.io/blog/nothing-is-constant/"/>
     <updated>2013-05-01T00:00:00-04:00</updated>
-    <id>http://ul1tka.github.io/blog/2013/05/01/constant</id>
+    <id>http://ul1tka.github.io/blog/nothing-is-constant</id>
     <content type="html"><![CDATA[<pre><code class="c++">#include &lt;string.h&gt;
 #include &lt;stdio.h&gt;
 
@@ -836,9 +836,9 @@ int main()
   
   <entry>
     <title type="html"><![CDATA[Why C++ Member Function Pointers Are 16 Bytes Wide]]></title>
-    <link href="http://ul1tka.github.io/blog/2013/04/28/wide-pointers/"/>
+    <link href="http://ul1tka.github.io/blog/wide-pointers/"/>
     <updated>2013-04-28T00:00:00-04:00</updated>
-    <id>http://ul1tka.github.io/blog/2013/04/28/wide-pointers</id>
+    <id>http://ul1tka.github.io/blog/wide-pointers</id>
     <content type="html"><![CDATA[<p>When talking about pointers, we generally assume it is something that can be represented by <code>void*</code> pointer which has a size of 8 bytes on the x86_64 architecture. For instance, here is an excerpt from a <a href="http://en.wikipedia.org/wiki/X86-64#Architectural_features">Wikipedia article about x86_64</a>:</p>
 
 <blockquote><p>Pushes and pops on the stack are always in 8-byte strides, and <strong>pointers are 8 bytes wide</strong>.</p></blockquote>
@@ -1008,9 +1008,9 @@ B's this:   0x7fff535dfb48
   
   <entry>
     <title type="html"><![CDATA[C++ Exceptions, Stack Trace and GDB Automation]]></title>
-    <link href="http://ul1tka.github.io/blog/2013/04/16/throw-stacktrace/"/>
+    <link href="http://ul1tka.github.io/blog/throw-stacktrace/"/>
     <updated>2013-04-16T00:00:00-04:00</updated>
-    <id>http://ul1tka.github.io/blog/2013/04/16/throw-stacktrace</id>
+    <id>http://ul1tka.github.io/blog/throw-stacktrace</id>
     <content type="html"><![CDATA[<p>The tricky part about any exception is that the stack is already unwinded by the time exception is caught and there is no easy way to figure out from which part of the code it was thrown. Have you ever caught an exception that has no information that can be used to find where the problem is? The one that says «this should never happen» or even has no text at all. Hopefully, this doesn’t happen to you very often. But if you work with a large C++ codebase with tons of different components written by different developers then sooner or later it would definitely happen. It can be quite disappointing and take a lot of time going through the pile of somebody else’s code trying to figure out what went wrong. So you must be prepared. I might be a little bit unlucky in this regard – this happened to me a lot, so I decided to share a few ways for overcoming this type of situations.</p>
 
 <h2>Backtrace API</h2>

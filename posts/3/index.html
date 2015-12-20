@@ -1,0 +1,554 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Vlad Lazarenko</title>
+  <meta name="author" content="Vlad Lazarenko">
+
+  
+  <meta name="description" content="A countless number of command line programs have been written since the invention of computers. Most of them parse command line options and spew out &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://ul1tka.github.io/posts/3/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Vlad Lazarenko" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Vlad Lazarenko</a></h1>
+  
+    <h2>... making all this up as I go along</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="ul1tka.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/smart-getopt/">Smart Command Line Options Parsing</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-12-03T08:47:00-05:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>3</span><span class='date-suffix'>rd</span>, <span class='date-year'>2013</span></span> <span class='time'>8:47 am</span></time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>A countless number of command line programs have been written since the invention of computers. Most of them parse command line options and spew out errors and usage messages if a user enters an unknown option or simply makes a typo. Examples are not far to seek. Make a typo trying to commit your changes into SVN repository and <a href="http://en.wikipedia.org/wiki/Apache_Subversion">Subversion</a> would bail out with errors:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>svn commir
+</span><span class='line'>Unknown <span class="nb">command</span>: <span class="s1">&#39;commir&#39;</span>
+</span><span class='line'>Type <span class="s1">&#39;svn help&#39;</span> <span class="k">for</span> usage.
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>There are command line tools that are standing out among others, impress with their intelligence and deliver unforgettable user experience.</p>
+
+<p>One of them is <a href="http://git-scm.com/">Git</a>. If it encounters an unknown option, it can analyze it, guess what user meant and suggest correct options:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>git commir
+</span><span class='line'>git: <span class="s1">&#39;commir&#39;</span> is not a git command. See <span class="s1">&#39;git --help&#39;</span>.
+</span><span class='line'>
+</span><span class='line'>Did you mean this?
+</span><span class='line'>  commit
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>To see this kind of feature in a command line tool is a pleasant surprise and could catch user’s attention. But if we take one step back and try to reckon programs with similar features, there will be a lot. Any decent word processors would have spell-checking feature that not only can detect mistakes but also suggest a correct spelling. Proofreading tools. Search engines often guess what we are looking for as well.</p>
+
+<p>So what kind of sorcery is this?</p>
+
+<h2>String Metrics</h2>
+
+<p>All of the similar algorithms are based on string metric algorithms that measure similarity or dissimilarity between two strings for <a href="http://en.wikipedia.org/wiki/Approximate_string_matching">approximate matching</a> or comparison and in <a href="http://en.wikipedia.org/wiki/Approximate_string_matching">fuzzy string searching</a>. The similarity or dissimilarity between two strings of text is commonly known as string distance.</p>
+
+<p>There are <a href="http://en.wikipedia.org/wiki/String_metrics">a number of different string metrics algorithms</a>. The most widely known string metric is the Levenshtein Distance, also known as Edit Distance.</p>
+
+<p>Informally, the Levenshtein distance between two words is the minimum number of single-character edits (insertion, deletion, substitution) required to change one word into the other. One could apply this algorithm to determine which one of the possible words is the most similar by comparing a number of character edits it requires to transform one word into another.</p>
+
+<h2>How Git Does This</h2>
+
+<p>Since <a href="http://git-scm.com">Git</a> is <a href="http://git-scm.com/about/free-and-open-source">free and open source</a>, we can check how it does the command line argument suggestion, and what algorithm is being used for that.</p>
+
+<p>The Git source code can be downloaded or viewed online at <a href="https://github.com/git/git">https://github.com/git/git</a>. All of the command line options handling is implemented in <a href="https://github.com/git/git/blob/master/help.c">help.c</a> file, and the suggestion is being made by <code>help_unknown_cmd()</code> function on line 293.</p>
+
+<p>After quickly grasping through the code, it turns out that Git is using a <a href="http://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance">Damerau–Levenshtein distance algorithm</a> to calculate similarities between an unknown command and a list of supported commands. The implementation of this algorithm consists of two small files - <a href="https://github.com/git/git/blob/master/levenshtein.h">levenshtein.h</a> and <a href="https://github.com/git/git/blob/master/levenshtein.c">levenshtein.c</a>.</p>
+
+<h2>Use It In Your Program</h2>
+
+<p>To see how hard it would be to implement something similar, we have decided to borrow the algorithm implementation and use it to implement a simple command line tool in C++.</p>
+
+<p>The basic idea is to accept command line options from a user and function that corresponds to a command name. In case the command name is unknown, use Damerau-Levenshtein algorithm and compare the unknown command to a list of supported ones. The algorithm returns an integer number that is a string distance. The bigger it is, less similar two strings are. Therefore, after comparing all of the strings, we simply store a result in <code>std::map</code> and take the first element as the most likely command user meant to type, but didn’t quite get it right.</p>
+
+<p>Since we are more focused on C++ rather than C, the first is to transform levenshtein.c into a C++ code (alternatively, a <a href="http://www.parashift.com/c++-faq/mixing-c-and-cpp.html">mixing of C and C++</a> code could have been used) and get rid of Git-specific <code>xmalloc()</code> function. Here are the changes:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='diff'><span class='line'><span class="gd">--- ../git/levenshtein.c    2013-12-03 19:09:52.000000000 -0500</span>
+</span><span class='line'><span class="gi">+++ levenshtein.cc   2013-12-03 19:49:40.000000000 -0500</span>
+</span><span class='line'><span class="gu">@@ -1,5 +1,6 @@</span>
+</span><span class='line'><span class="gd">-#include &quot;cache.h&quot;</span>
+</span><span class='line'><span class="gd">-#include &quot;levenshtein.h&quot;</span>
+</span><span class='line'><span class="gi">+#include &quot;levenshtein.hh&quot;</span>
+</span><span class='line'><span class="gi">+#include &lt;cstdlib&gt; // for malloc and free</span>
+</span><span class='line'><span class="gi">+#include &lt;cstring&gt; // for strlen</span>
+</span><span class='line'>
+</span><span class='line'> /*
+</span><span class='line'>  * This function implements the Damerau-Levenshtein algorithm to
+</span><span class='line'><span class="gu">@@ -42,9 +43,9 @@</span>
+</span><span class='line'>      int w, int s, int a, int d)
+</span><span class='line'> {
+</span><span class='line'>  int len1 = strlen(string1), len2 = strlen(string2);
+</span><span class='line'><span class="gd">-    int *row0 = xmalloc(sizeof(int) * (len2 + 1));</span>
+</span><span class='line'><span class="gd">-    int *row1 = xmalloc(sizeof(int) * (len2 + 1));</span>
+</span><span class='line'><span class="gd">-    int *row2 = xmalloc(sizeof(int) * (len2 + 1));</span>
+</span><span class='line'><span class="gi">+    int *row0 = (int*)malloc(sizeof(int) * (len2 + 1));</span>
+</span><span class='line'><span class="gi">+    int *row1 = (int*)malloc(sizeof(int) * (len2 + 1));</span>
+</span><span class='line'><span class="gi">+    int *row2 = (int*)malloc(sizeof(int) * (len2 + 1));</span>
+</span><span class='line'>  int i, j;
+</span><span class='line'>
+</span><span class='line'>  for (j = 0; j &lt;= len2; j++)
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And a simple command line tool that uses Git&rsquo;s <code>levenshtein()</code> function:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="c1">//</span>
+</span><span class='line'><span class="c1">// An example of using Damerau-Levenshtein algorithm</span>
+</span><span class='line'><span class="c1">// to suggest a correct command if user enters something</span>
+</span><span class='line'><span class="c1">// that we don&#39;t know how to handle.</span>
+</span><span class='line'><span class="c1">//</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &lt;cstdlib&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;string&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;map&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;unordered_map&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;iostream&gt;</span>
+</span><span class='line'><span class="cp">#include &quot;levenshtein.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Define command handler function type.</span>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">on_help</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Sure thing! What can I do for you?</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">on_version</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;I am not versioned, sorry.</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">on_verbose</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;If you need verbose, go read Twitter!</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="kt">void</span> <span class="nf">on_say</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Oops, my speech speed synthesizer is broken :(</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// This function does not need an introduction.</span>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+</span><span class='line'>    <span class="c1">// Check that we have at least one argument.</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Please enter a command</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Deduce command from command line.</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">cmd</span><span class="p">{</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]};</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Create a list of commands.</span>
+</span><span class='line'>    <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">unordered_map</span><span class="o">&lt;</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">()</span><span class="o">&gt;</span>
+</span><span class='line'>    <span class="o">&gt;</span> <span class="n">cmd_map</span><span class="p">{</span>
+</span><span class='line'>        <span class="p">{</span> <span class="s">&quot;help&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">on_help</span> <span class="p">},</span>
+</span><span class='line'>        <span class="p">{</span> <span class="s">&quot;say&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">on_say</span> <span class="p">},</span>
+</span><span class='line'>        <span class="p">{</span> <span class="s">&quot;version&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">on_version</span> <span class="p">},</span>
+</span><span class='line'>        <span class="p">{</span> <span class="s">&quot;verbose&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">on_verbose</span> <span class="p">}</span>
+</span><span class='line'>    <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Find a command.</span>
+</span><span class='line'>    <span class="k">auto</span> <span class="n">cmd_it</span> <span class="o">=</span> <span class="n">cmd_map</span><span class="p">.</span><span class="n">find</span><span class="p">(</span><span class="n">cmd</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">cmd_it</span> <span class="o">!=</span> <span class="n">cmd_map</span><span class="p">.</span><span class="n">end</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>        <span class="c1">// Command was found. Run the handler and exit.</span>
+</span><span class='line'>        <span class="p">(</span><span class="n">cmd_it</span><span class="o">-&gt;</span><span class="n">second</span><span class="p">)();</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">EXIT_SUCCESS</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// If we get there, the command is unknown.</span>
+</span><span class='line'>    <span class="c1">// First, tell it to the user.</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Unknown command: &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">cmd</span> <span class="o">&lt;&lt;</span> <span class="sc">&#39;\n&#39;</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Use Damerau-Levenshtein algorithm to get similarity</span>
+</span><span class='line'>    <span class="c1">// score with all of the commands we support, then pick</span>
+</span><span class='line'>    <span class="c1">// the best few to suggest to the user.</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">multimap</span><span class="o">&lt;</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="cm">/* Levenshtein distance, less is better. */</span><span class="p">,</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="cm">/* Supported command */</span>
+</span><span class='line'>    <span class="o">&gt;</span> <span class="n">dist</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="nl">p</span> <span class="p">:</span> <span class="n">cmd_map</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="n">dist</span><span class="p">.</span><span class="n">emplace</span><span class="p">(</span>
+</span><span class='line'>            <span class="n">levenshtein</span><span class="p">(</span>
+</span><span class='line'>                <span class="n">cmd</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span> <span class="c1">// Command entered by the user.</span>
+</span><span class='line'>                <span class="n">p</span><span class="p">.</span><span class="n">first</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span> <span class="c1">// One of the supported commands.</span>
+</span><span class='line'>                <span class="mi">0</span><span class="p">,</span> <span class="c1">// swap cost</span>
+</span><span class='line'>                <span class="mi">2</span><span class="p">,</span> <span class="c1">// substitution cost</span>
+</span><span class='line'>                <span class="mi">1</span><span class="p">,</span> <span class="c1">// insertion cost</span>
+</span><span class='line'>                <span class="mi">3</span>  <span class="c1">// deletion cost</span>
+</span><span class='line'>            <span class="p">),</span>
+</span><span class='line'>            <span class="n">p</span><span class="p">.</span><span class="n">first</span>
+</span><span class='line'>        <span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Take the first best guess (lowest distance = better match).</span>
+</span><span class='line'>    <span class="c1">// Suggest a list of commands with the same Levenshtein distance.</span>
+</span><span class='line'>    <span class="c1">// This can be tweaked to show more options, etc..</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">dist</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">auto</span> <span class="n">best_score</span> <span class="o">=</span> <span class="n">dist</span><span class="p">.</span><span class="n">begin</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">first</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Did you mean one of these?</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">for</span> <span class="p">(</span><span class="k">auto</span><span class="o">&amp;</span> <span class="nl">p</span> <span class="p">:</span> <span class="n">dist</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="n">p</span><span class="p">.</span><span class="n">first</span> <span class="o">!=</span> <span class="n">best_score</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>                <span class="c1">// For more option, one could use something like</span>
+</span><span class='line'>                <span class="c1">// `p.first - best_score &gt; N` where N is max.</span>
+</span><span class='line'>                <span class="c1">// allowed difference.</span>
+</span><span class='line'>                <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="sc">&#39;\t&#39;</span> <span class="o">&lt;&lt;</span> <span class="n">p</span><span class="p">.</span><span class="n">second</span> <span class="o">&lt;&lt;</span> <span class="sc">&#39;\n&#39;</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">EXIT_FAILURE</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Compile two files into a binary using Clang:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>clang++ -Wall -Wextra -pedantic -std<span class="o">=</span>c++11 -o <span class="nb">test</span> ./smart_help.cc
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The tool supports only three commands — &ldquo;help&rdquo;, &ldquo;version&rdquo;, &ldquo;verbose&rdquo; and &ldquo;say&rdquo;. Let&rsquo;s say user only types &ldquo;ver&rdquo;, in that case it correctly suggest two possible alternatives:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>./test ver
+</span><span class='line'>Unknown <span class="nb">command</span>: ver
+</span><span class='line'>Did you mean one of these?
+</span><span class='line'>  verbose
+</span><span class='line'>  version
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It doesn&rsquo;t lose face when handling &ldquo;he&rdquo; and &ldquo;s&rdquo; as well:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nv">$ </span>./test he
+</span><span class='line'>Unknown <span class="nb">command</span>: he
+</span><span class='line'>Did you mean one of these?
+</span><span class='line'>  <span class="nb">help</span>
+</span><span class='line'><span class="nv">$ </span>./test s
+</span><span class='line'>Unknown <span class="nb">command</span>: s
+</span><span class='line'>Did you mean one of these?
+</span><span class='line'>  say
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Of course, it is possible to tweak and tune this program further - do more error checking, play with different cost weights, do less or more aggressive guessing and so one.</p>
+
+<p>The main point is – it isn’t all that difficult to make your command line option parsing more intelligent and user friendly by using this or similar algorithms. A great <a href="http://en.wikipedia.org/wiki/User_experience">user experience</a> matters a lot.</p>
+
+<p>Maybe one day this would become a standard feature of option parsing libraries like <a href="http://www.boost.org/doc/libs/release/doc/html/program_options.html">Boost’s Program Options</a>, Python’s <a href="http://docs.python.org/2.7/library/argparse.html">argparse</a> and even GNU <a href="http://www.gnu.org/software/libc/manual/html_node/Getopt.html">getopt</a>.</p>
+
+<p>As always, thanks for reading!</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/posts/4">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/posts/2">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/devirtualization/">C++ Devirtualization</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/coding-hungover/">Coding While Hungover</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/smart-getopt/">Smart Command Line Options Parsing</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/nothing-is-constant/">How Constant Is a Constant?</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/wide-pointers/">Why C++ Member Function Pointers Are 16 Bytes Wide</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/throw-stacktrace/">C++ Exceptions, Stack Trace and GDB Automation</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/ask-smart/">Ask Smart Questions and You Will Succeed</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2010-2015 - <a href="mailto:vlad@lazarenko.me">Vlad Lazarenko</a> -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

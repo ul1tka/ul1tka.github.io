@@ -1,63 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>http://ul1tka.github.io/blog/devirtualization/</loc>
+    <loc>http://ul1tka.github.io/devirtualization/</loc>
     <lastmod>2013-12-15T21:12:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/coding-hungover/</loc>
+    <loc>http://ul1tka.github.io/coding-hungover/</loc>
     <lastmod>2013-12-07T16:03:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/smart-getopt/</loc>
+    <loc>http://ul1tka.github.io/smart-getopt/</loc>
     <lastmod>2013-12-03T08:47:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/nothing-is-constant/</loc>
+    <loc>http://ul1tka.github.io/nothing-is-constant/</loc>
     <lastmod>2013-05-01T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/wide-pointers/</loc>
+    <loc>http://ul1tka.github.io/wide-pointers/</loc>
     <lastmod>2013-04-28T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/throw-stacktrace/</loc>
+    <loc>http://ul1tka.github.io/throw-stacktrace/</loc>
     <lastmod>2013-04-16T00:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/ask-smart/</loc>
+    <loc>http://ul1tka.github.io/ask-smart/</loc>
     <lastmod>2013-03-29T22:00:00-04:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/pyusb/</loc>
+    <loc>http://ul1tka.github.io/pyusb/</loc>
     <lastmod>2013-03-04T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/raii/</loc>
+    <loc>http://ul1tka.github.io/raii/</loc>
     <lastmod>2013-02-27T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/marvell-88E1111-reset/</loc>
+    <loc>http://ul1tka.github.io/marvell-88E1111-reset/</loc>
     <lastmod>2013-02-27T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/signal-handler/</loc>
+    <loc>http://ul1tka.github.io/signal-handler/</loc>
     <lastmod>2013-01-15T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/vector-erase/</loc>
+    <loc>http://ul1tka.github.io/vector-erase/</loc>
     <lastmod>2013-01-14T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/switch/</loc>
+    <loc>http://ul1tka.github.io/switch/</loc>
     <lastmod>2013-01-13T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/fpga-programming-where-to-begin/</loc>
+    <loc>http://ul1tka.github.io/fpga-programming-where-to-begin/</loc>
     <lastmod>2012-12-31T00:00:00-05:00</lastmod>
   </url>
   <url>
-    <loc>http://ul1tka.github.io/blog/cpp-show-predefined-macros/</loc>
+    <loc>http://ul1tka.github.io/cpp-show-predefined-macros/</loc>
     <lastmod>2010-10-17T00:00:00-04:00</lastmod>
   </url>
   <url>

@@ -4,7 +4,7 @@
   <title><![CDATA[Vlad Lazarenko]]></title>
   <link href="http://ul1tka.github.io/atom.xml" rel="self"/>
   <link href="http://ul1tka.github.io/"/>
-  <updated>2015-12-20T17:09:52-05:00</updated>
+  <updated>2015-12-20T17:28:48-05:00</updated>
   <id>http://ul1tka.github.io/</id>
   <author>
     <name><![CDATA[Vlad Lazarenko]]></name>
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[C++ Devirtualization]]></title>
-    <link href="http://ul1tka.github.io/blog/devirtualization/"/>
+    <link href="http://ul1tka.github.io/devirtualization/"/>
     <updated>2013-12-15T21:12:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/devirtualization</id>
+    <id>http://ul1tka.github.io/devirtualization</id>
     <content type="html"><![CDATA[<p>Using a virtual dispatch might get relatively expensive in terms of clock cycles due to multiple levels of <a href="http://en.wikipedia.org/wiki/Indirection">indirections</a> including <a href="http://en.wikipedia.org/wiki/Indirect_branch">indirect branching</a> as well as <a href="http://gcc.gnu.org/onlinedocs/gcc/Bound-member-functions.html"><code>this</code> pointer adjustment</a>. Wise programmers do not use virtual dispatch without a good reason but oftentimes it is required either by design or when creating non-template reusable components/libraries and the final implementation of some parts of the program is not known.</p>
 
 <p>Optimizing compilers do a great deal of work trying to optimize virtual dispatch as much as possible, sometimes even eliminating it in the end program entirely.  Let&rsquo;s take a quick look at how compilers implement virtual dispatch, how it can be optimized away and go over a few tricks that programmers can do to achieve better runtime performance.</p>
@@ -484,9 +484,9 @@ fptr p = (fptr)(a.*fp);
   
   <entry>
     <title type="html"><![CDATA[Coding While Hungover]]></title>
-    <link href="http://ul1tka.github.io/blog/coding-hungover/"/>
+    <link href="http://ul1tka.github.io/coding-hungover/"/>
     <updated>2013-12-07T16:03:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/coding-hungover</id>
+    <id>http://ul1tka.github.io/coding-hungover</id>
     <content type="html"><![CDATA[<p>Hooked up with Bender last night and woke up with a gong banging in your head? Have to work today, used up all of your sick days and calling in dead is not an option? Welcome to the club! Now you have to get up and drag your sick body to work. But the biggest challenge today is to survive long working hours. We’ve put up a few tips to help you do just that.</p>
 
 <h2>Shower</h2>
@@ -586,9 +586,9 @@ fptr p = (fptr)(a.*fp);
   
   <entry>
     <title type="html"><![CDATA[Smart Command Line Options Parsing]]></title>
-    <link href="http://ul1tka.github.io/blog/smart-getopt/"/>
+    <link href="http://ul1tka.github.io/smart-getopt/"/>
     <updated>2013-12-03T08:47:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/smart-getopt</id>
+    <id>http://ul1tka.github.io/smart-getopt</id>
     <content type="html"><![CDATA[<p>A countless number of command line programs have been written since the invention of computers. Most of them parse command line options and spew out errors and usage messages if a user enters an unknown option or simply makes a typo. Examples are not far to seek. Make a typo trying to commit your changes into SVN repository and <a href="http://en.wikipedia.org/wiki/Apache_Subversion">Subversion</a> would bail out with errors:</p>
 
 <figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -966,9 +966,9 @@ fptr p = (fptr)(a.*fp);
   
   <entry>
     <title type="html"><![CDATA[How Constant Is a Constant?]]></title>
-    <link href="http://ul1tka.github.io/blog/nothing-is-constant/"/>
+    <link href="http://ul1tka.github.io/nothing-is-constant/"/>
     <updated>2013-05-01T00:00:00-04:00</updated>
-    <id>http://ul1tka.github.io/blog/nothing-is-constant</id>
+    <id>http://ul1tka.github.io/nothing-is-constant</id>
     <content type="html"><![CDATA[<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
 <span class='line-number'>2</span>
 <span class='line-number'>3</span>
@@ -1388,9 +1388,9 @@ fptr p = (fptr)(a.*fp);
   
   <entry>
     <title type="html"><![CDATA[Why C++ Member Function Pointers Are 16 Bytes Wide]]></title>
-    <link href="http://ul1tka.github.io/blog/wide-pointers/"/>
+    <link href="http://ul1tka.github.io/wide-pointers/"/>
     <updated>2013-04-28T00:00:00-04:00</updated>
-    <id>http://ul1tka.github.io/blog/wide-pointers</id>
+    <id>http://ul1tka.github.io/wide-pointers</id>
     <content type="html"><![CDATA[<p>When talking about pointers, we generally assume it is something that can be represented by <code>void*</code> pointer which has a size of 8 bytes on the x86_64 architecture. For instance, here is an excerpt from a <a href="http://en.wikipedia.org/wiki/X86-64#Architectural_features">Wikipedia article about x86_64</a>:</p>
 
 <blockquote><p>Pushes and pops on the stack are always in 8-byte strides, and <strong>pointers are 8 bytes wide</strong>.</p></blockquote>
@@ -1684,9 +1684,9 @@ fptr p = (fptr)(a.*fp);
   
   <entry>
     <title type="html"><![CDATA[C++ Exceptions, Stack Trace and GDB Automation]]></title>
-    <link href="http://ul1tka.github.io/blog/throw-stacktrace/"/>
+    <link href="http://ul1tka.github.io/throw-stacktrace/"/>
     <updated>2013-04-16T00:00:00-04:00</updated>
-    <id>http://ul1tka.github.io/blog/throw-stacktrace</id>
+    <id>http://ul1tka.github.io/throw-stacktrace</id>
     <content type="html"><![CDATA[<p>The tricky part about any exception is that the stack is already unwinded by the time exception is caught and there is no easy way to figure out from which part of the code it was thrown. Have you ever caught an exception that has no information that can be used to find where the problem is? The one that says «this should never happen» or even has no text at all. Hopefully, this doesn’t happen to you very often. But if you work with a large C++ codebase with tons of different components written by different developers then sooner or later it would definitely happen. It can be quite disappointing and take a lot of time going through the pile of somebody else’s code trying to figure out what went wrong. So you must be prepared. I might be a little bit unlucky in this regard – this happened to me a lot, so I decided to share a few ways for overcoming this type of situations.</p>
 
 <h2>Backtrace API</h2>
@@ -2173,9 +2173,9 @@ fptr p = (fptr)(a.*fp);
   
   <entry>
     <title type="html"><![CDATA[Ask Smart Questions and You Will Succeed]]></title>
-    <link href="http://ul1tka.github.io/blog/ask-smart/"/>
+    <link href="http://ul1tka.github.io/ask-smart/"/>
     <updated>2013-03-29T22:00:00-04:00</updated>
-    <id>http://ul1tka.github.io/blog/ask-smart</id>
+    <id>http://ul1tka.github.io/ask-smart</id>
     <content type="html"><![CDATA[<p>Asking is ultimately one of the most important ways for you to succeed. You shall not be afraid to ask. You shall ask often. Ask for help and for a raise, ask for an advice and ask questions. Asking is very powerful. Not only it might help you to get an answer, you may as well receive something that is a lot more valuable, something you haven’t even thought of before. Asking helps you to make your way. It helps others to understand you better. Asking connects people. In English we say, “It doesn’t hurt to ask.” Russians say, “Nobody punches your nose for asking.” I am sure that other cultures have a similar saying.</p>
 
 <p>I have been hanging out on <a href="http://stackoverflow.com/">Stack Overflow</a>, a nice Q&amp;A site, for about two years now, and have answered some 770 questions. Not a lot, but I have enjoyed each and every question I have either answered or at least tried to answer. Yet my questions are what I am proud of the most. They were most helpful, at least for me. Sometimes, answering a question creates more questions and leads to a research, helps to learn something new — be that a programming trick, a new technology, a new interesting person that you didn’t know before. It is always better to ask than not to ask. In any case it makes you richer.</p>
@@ -2203,9 +2203,9 @@ fptr p = (fptr)(a.*fp);
   
   <entry>
     <title type="html"><![CDATA[Linux, HID and PyUSB]]></title>
-    <link href="http://ul1tka.github.io/blog/pyusb/"/>
+    <link href="http://ul1tka.github.io/pyusb/"/>
     <updated>2013-03-04T00:00:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/pyusb</id>
+    <id>http://ul1tka.github.io/pyusb</id>
     <content type="html"><![CDATA[<p>Today I was going through some stuff in my desk’s locker and ran into this nice toy — a big red electronic panic button. It has been there for years but I never had a chance to use it because a company making those does not have a driver for OS X, and of course I couldn’t find one for Linux either. But pushing a big red button is always fun and this time I have decided to try and make it work. So I brought it home with me into my “lab” to see what I can do.</p>
 
 <p>After plugging it into a USB port, it immediately showed up in a list of USB devices (which you can see with lsusb tool). My Linux box has identified it as a Dream Cheeky Stress/Panic Button:</p>
@@ -2330,9 +2330,9 @@ fptr p = (fptr)(a.*fp);
   
   <entry>
     <title type="html"><![CDATA[Automatic Resource Management in Programming Languages]]></title>
-    <link href="http://ul1tka.github.io/blog/raii/"/>
+    <link href="http://ul1tka.github.io/raii/"/>
     <updated>2013-02-27T00:00:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/raii</id>
+    <id>http://ul1tka.github.io/raii</id>
     <content type="html"><![CDATA[<p>Many high-level programming languages provide software developers with the ability to automatically cleanup resources — automatically closing an open file when it is no longer used, freeing dynamically allocated memory, or anything else for that matter. This article touches on automatic resource management features available in modern programming languages. It shows some examples demonstrating why having this feature make it easier to write code, or how not using this feature may lead to potentially critical failures of the program. The primary focus is on C++ and C (surprise!) languages.</p>
 
 <h2>C</h2>
@@ -2861,9 +2861,9 @@ In a system, we need a “resource handle” class for each resource. However, w
   
   <entry>
     <title type="html"><![CDATA[Marvell 88E1111 Reset Sequence]]></title>
-    <link href="http://ul1tka.github.io/blog/marvell-88E1111-reset/"/>
+    <link href="http://ul1tka.github.io/marvell-88E1111-reset/"/>
     <updated>2013-02-27T00:00:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/marvell-88E1111-reset</id>
+    <id>http://ul1tka.github.io/marvell-88E1111-reset</id>
     <content type="html"><![CDATA[<p>If you are one of the lucky owners of one of the Altera’s development kits with Marvell’s software-programmable 88E1111 Ethernet PHY then you know it’s a bitch. The problem is not really in a PHY itself — it’s not a bad piece of hardware at all. The problem is that Altera provides literally zero support or documentation with it. Go figure.</p>
 
 <p>As it turns out, the PHY’s default settings after the hardware reset is to work in center-aligned mode, whereas the default mode for FPGA data-transfers is edge-aligned. On top of that, some kits have a bug and the PHY must be reset two or three times in order to become operational.</p>
@@ -3055,9 +3055,9 @@ In a system, we need a “resource handle” class for each resource. However, w
   
   <entry>
     <title type="html"><![CDATA[How Not to Write a Signal Handler]]></title>
-    <link href="http://ul1tka.github.io/blog/signal-handler/"/>
+    <link href="http://ul1tka.github.io/signal-handler/"/>
     <updated>2013-01-15T00:00:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/signal-handler</id>
+    <id>http://ul1tka.github.io/signal-handler</id>
     <content type="html"><![CDATA[<p>Back in the day, I was reading a book about UNIX® programming and have learned how to write a signal handler. It was a long time ago and I don’t remember the book, but to this day the way described in that book is something that shows up in Google’s top results when you search for “How to write a signal handler”. Here it is — a simple, elegant solution to the world’s toughest problem:</p>
 
 <figure class='code'><figcaption><span>A simple, elegant solution to the world’s toughest problem.</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -3439,9 +3439,9 @@ A signal handler function must be very careful, since processing elsewhere may b
   
   <entry>
     <title type="html"><![CDATA[Erasing Vector the Smart Way]]></title>
-    <link href="http://ul1tka.github.io/blog/vector-erase/"/>
+    <link href="http://ul1tka.github.io/vector-erase/"/>
     <updated>2013-01-14T00:00:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/vector-erase</id>
+    <id>http://ul1tka.github.io/vector-erase</id>
     <content type="html"><![CDATA[<p>In the C++ world, <a href="http://en.cppreference.com/w/cpp/container/vector"><code>std::vector</code></a> is a <a href="http://en.wikipedia.org/wiki/Sequence_container_(C%2B%2B">sequence container</a>) that encapsulates <a href="http://en.wikipedia.org/wiki/Dynamic_array">dynamic size arrays</a>. One of the main perks of the vector is the fact that elements are stored <strong>contiguously</strong>. In other words, a pointer to an element of a vector may be passed to any function that expects a pointer to an element of array. Or simply put — <code>std::vector</code> is very close to a <a href="http://www.cplusplus.com/doc/tutorial/arrays/">plain old-school C-style array</a>, yet it provides developers with a lot of C++ perks like automatic memory management, bounds checking and more. Unfortunately, <code>std::vector</code> is so great that many developers are using it without really thinking too much about the underlying implementation and its downsides.</p>
 
 <h2>Erase Trap</h2>
@@ -3510,9 +3510,9 @@ A signal handler function must be very careful, since processing elsewhere may b
   
   <entry>
     <title type="html"><![CDATA[From Switch Statement Down to Machine Code]]></title>
-    <link href="http://ul1tka.github.io/blog/switch/"/>
+    <link href="http://ul1tka.github.io/switch/"/>
     <updated>2013-01-13T00:00:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/switch</id>
+    <id>http://ul1tka.github.io/switch</id>
     <content type="html"><![CDATA[<h2>Introduction</h2>
 
 <p>Most of us know what a <a href="http://en.wikipedia.org/wiki/Switch_statement"><em>switch</em> statement</a> is and have probably been using it very often. No wonder why — switch statement is simple yet extremely expressive. It allows keeping the code compact while describing complex <a href="http://en.wikipedia.org/wiki/Control_flow">control flow</a>. Putting the <a href="http://en.wikipedia.org/wiki/Syntactic_sugar">syntactic sugar</a> aside, most developers also believe that using a switch statement results in a lot better, faster code. Not many knows if that is really true and why. The most common speculations supporting superior switch statement performance are:</p>
@@ -4641,9 +4641,9 @@ Changing the order of case labels in the switch did not affect the generated cod
   
   <entry>
     <title type="html"><![CDATA[FPGA Programming. Where to Begin?]]></title>
-    <link href="http://ul1tka.github.io/blog/fpga-programming-where-to-begin/"/>
+    <link href="http://ul1tka.github.io/fpga-programming-where-to-begin/"/>
     <updated>2012-12-31T00:00:00-05:00</updated>
-    <id>http://ul1tka.github.io/blog/fpga-programming-where-to-begin</id>
+    <id>http://ul1tka.github.io/fpga-programming-where-to-begin</id>
     <content type="html"><![CDATA[<p>Before you start reading, please note that this post is for software developers and software developers only. In particular, it is for those who want to start programming their logic on FPGAs.</p>
 
 <p>The reason behind this post is simple. I have been asked a few times about what is the best way to become a digital logic designer (or FPGA programmer, though technically an FPGA programmer is a combination of hardware and software that is used to physically burn the logic into FPGA chip, but anyway).</p>
@@ -4736,9 +4736,9 @@ Changing the order of case labels in the switch did not affect the generated cod
   
   <entry>
     <title type="html"><![CDATA[Predefined Macros]]></title>
-    <link href="http://ul1tka.github.io/blog/cpp-show-predefined-macros/"/>
+    <link href="http://ul1tka.github.io/cpp-show-predefined-macros/"/>
     <updated>2010-10-17T00:00:00-04:00</updated>
-    <id>http://ul1tka.github.io/blog/cpp-show-predefined-macros</id>
+    <id>http://ul1tka.github.io/cpp-show-predefined-macros</id>
     <content type="html"><![CDATA[<p>Every C and C++ compiler has several object-like macros that are implicitly defined and can be used  without supplying their definitions on the command line or through including header files. Such macros are called &ldquo;predefined&rdquo; and can help figure out for what architecture you compile for, on what platform, if the source code being compiled is C or C++, and even tell the language standard of the code being used.</p>
 
 <p>All predefined macros are described in GCC online documentation. However, not all of them are guaranteed to be defined. Sometimes it is helpful to see a list of macros defined by the compiler with their values, if any. To do that, run a preprocessor with zero input, using the following command:</p>

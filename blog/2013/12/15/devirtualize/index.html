@@ -1,0 +1,663 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>C++ Devirtualization - My Octopress Blog</title>
+  <meta name="author" content="Your Name">
+
+  
+  <meta name="description" content="Using a virtual dispatch might get relatively expensive in terms of clock cycles due to multiple levels of indirections including indirect branching &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://ul1tka.github.io/blog/2013/12/15/devirtualize/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="My Octopress Blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">My Octopress Blog</a></h1>
+  
+    <h2>A blogging framework for hackers.</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="ul1tka.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">C++ Devirtualization</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2013-12-15T21:12:00-05:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>9:12 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Using a virtual dispatch might get relatively expensive in terms of clock cycles due to multiple levels of <a href="http://en.wikipedia.org/wiki/Indirection">indirections</a> including <a href="http://en.wikipedia.org/wiki/Indirect_branch">indirect branching</a> as well as <a href="http://gcc.gnu.org/onlinedocs/gcc/Bound-member-functions.html"><code>this</code> pointer adjustment</a>. Wise programmers do not use virtual dispatch without a good reason but oftentimes it is required either by design or when creating non-template reusable components/libraries and the final implementation of some parts of the program is not known.</p>
+
+<p>Optimizing compilers do a great deal of work trying to optimize virtual dispatch as much as possible, sometimes even eliminating it in the end program entirely.  Let&rsquo;s take a quick look at how compilers implement virtual dispatch, how it can be optimized away and go over a few tricks that programmers can do to achieve better runtime performance.</p>
+
+<h2>Virtual Dispatch Mechanics</h2>
+
+<p>Implementation of the virtual dispatch in C++ is not covered by the language standard. It is up to compiler to decide how to implement it. All of the compilers that I&rsquo;ve worked with implement it using a <a href="http://en.wikipedia.org/wiki/Virtual_method_table">virtual method table</a> concept. The details of an exact implementation tend to get very complex once multiple inheritance, virtual inheritance and optimization gets involved. For utmost simple cases, one can think of a straightforward implementation where a base class has a pointer to an array of function pointers. To demonstrate this, let&rsquo;s write a functional equivalent of the below C++ program in C.</p>
+
+<figure class='code'><figcaption><span>Simple C++ Example Using Virtual Dispatch</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">struct</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="o">~</span><span class="n">A</span><span class="p">()</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">A</span> <span class="n">a</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">a</span><span class="p">.</span><span class="n">foo</span><span class="p">();</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Assuming that no optimization is performed, the above code can be described in C like this:</p>
+
+<p><a name="c_vtable_example"></a></p>
+
+<figure class='code'><figcaption><span>Simple Virtual Table Example in C</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">struct</span> <span class="n">A</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/*</span>
+</span><span class='line'><span class="cm"> * A virtual table for class A implicitly generated by C++ compiler.</span>
+</span><span class='line'><span class="cm"> * It consists of two &quot;methods&quot; - a pointer to a destructor of class A</span>
+</span><span class='line'><span class="cm"> * and a pointer to A&#39;s &quot;foo&quot; virtual method implementation. In both cases</span>
+</span><span class='line'><span class="cm"> * &quot;this&quot; pointer is a pointer to base class A which is passed to methods</span>
+</span><span class='line'><span class="cm"> * implicitly.</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="k">struct</span> <span class="n">A_vtable</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kt">void</span> <span class="p">(</span><span class="o">*</span><span class="n">destructor</span><span class="p">)(</span><span class="k">struct</span> <span class="n">A</span> <span class="o">*</span><span class="n">this</span><span class="p">);</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="p">(</span><span class="o">*</span><span class="n">foo</span><span class="p">)(</span><span class="k">struct</span> <span class="n">A</span> <span class="o">*</span><span class="n">this</span><span class="p">);</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>        <span class="cm">/* A class implicitly gets a &quot;vtable&quot; pointer as its first field */</span>
+</span><span class='line'>        <span class="k">const</span> <span class="k">struct</span> <span class="n">A_vtable</span> <span class="o">*</span><span class="n">vtable</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/* Implementation of A&#39;s destructor */</span>
+</span><span class='line'><span class="kt">void</span> <span class="nf">A_destructor</span><span class="p">(</span><span class="k">struct</span> <span class="n">A</span> <span class="o">*</span><span class="n">this</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/* Implementation of A&#39;s foo method. */</span>
+</span><span class='line'><span class="kt">int</span> <span class="nf">A_foo</span><span class="p">(</span><span class="k">struct</span> <span class="n">A</span> <span class="o">*</span><span class="n">this</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/* Virtual table for class A generated by the compiler */</span>
+</span><span class='line'><span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">A_vtable</span> <span class="n">A_vtable_instance</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>        <span class="o">&amp;</span><span class="n">A_destructor</span><span class="p">,</span>
+</span><span class='line'>        <span class="o">&amp;</span><span class="n">A_foo</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">struct</span> <span class="n">A</span> <span class="n">a</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="cm">/*</span>
+</span><span class='line'><span class="cm">         * Initialize class A by setting its virtual table pointer.</span>
+</span><span class='line'><span class="cm">         * This pointer can be set to a different &quot;table&quot; instance</span>
+</span><span class='line'><span class="cm">         * in case of derived classes. This happens implicitly during</span>
+</span><span class='line'><span class="cm">         * class construction.</span>
+</span><span class='line'><span class="cm">         */</span>
+</span><span class='line'>        <span class="n">a</span><span class="p">.</span><span class="n">vtable</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">A_vtable_instance</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="cm">/* Invoke A&#39;s foo method through the virtual table. */</span>
+</span><span class='line'>        <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">vtable</span><span class="o">-&gt;</span><span class="n">foo</span><span class="p">)(</span><span class="o">&amp;</span><span class="n">a</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="cm">/*</span>
+</span><span class='line'><span class="cm">         * Call A&#39;s destructor. In our case this happens implicitly</span>
+</span><span class='line'><span class="cm">         * because of RAII.</span>
+</span><span class='line'><span class="cm">         * http://en.wikipedia.org/wiki/Resource_Acquisition_Is_Initialization</span>
+</span><span class='line'><span class="cm">         */</span>
+</span><span class='line'>        <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">vtable</span><span class="o">-&gt;</span><span class="n">destructor</span><span class="p">)(</span><span class="o">&amp;</span><span class="n">a</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="cm">/* Return from main */</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>By looking at how virtual functions are called, it becomes apparent that invocation of a virtual function has some overhead. Basically, three steps need to be performed to call a virtual function:</p>
+
+<ol>
+<li>Offset must be applied to a virtual table in order to obtain an address of a function to call.</li>
+<li>A pointer to a virtual table must be dereferenced to read the address of a function.</li>
+<li>An <a href="http://en.wikipedia.org/wiki/Indirect_branch">indirect call</a> must be made to call a function by address stored in register.</li>
+</ol>
+
+
+<h3>x86_64 Machine Code</h3>
+
+<p>To demonstrate this, let&rsquo;s look at the disassembled function that gets an instance of class <code>A</code> by reference and calls its virtual <code>foo()</code> method:</p>
+
+<figure class='code'><figcaption><span>Simple Invocation of Virtual Method in C++</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="kt">int</span> <span class="nf">call</span><span class="p">(</span><span class="n">A</span><span class="o">&amp;</span> <span class="n">obj</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">obj</span><span class="p">.</span><span class="n">foo</span><span class="p">();</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>GCC would generate the following code for x86_64 with all optimizations turned off:</p>
+
+<figure class='code'><figcaption><span>Equivalent code in x86_64 assembler (unoptimised)</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='nasm'><span class='line'><span class="nf">push</span>   <span class="o">%</span><span class="nb">rbp</span>
+</span><span class='line'><span class="nf">mov</span>    <span class="o">%</span><span class="nb">rsp</span><span class="p">,</span><span class="o">%</span><span class="nb">rbp</span>
+</span><span class='line'><span class="nf">sub</span>    <span class="kc">$</span><span class="mh">0x10</span><span class="p">,</span><span class="o">%</span><span class="nb">rsp</span>
+</span><span class='line'><span class="nf">mov</span>    <span class="o">%</span><span class="nb">rdi</span><span class="p">,</span><span class="o">-</span><span class="mh">0x8</span><span class="p">(</span><span class="o">%</span><span class="nb">rbp</span><span class="p">)</span>
+</span><span class='line'><span class="nf">mov</span>    <span class="o">-</span><span class="mh">0x8</span><span class="p">(</span><span class="o">%</span><span class="nb">rbp</span><span class="p">),</span><span class="o">%</span><span class="nb">rax</span>
+</span><span class='line'><span class="nf">mov</span>    <span class="p">(</span><span class="o">%</span><span class="nb">rax</span><span class="p">),</span><span class="o">%</span><span class="nb">rax</span>
+</span><span class='line'><span class="nf">add</span>    <span class="kc">$</span><span class="mh">0x10</span><span class="p">,</span><span class="o">%</span><span class="nb">rax</span>
+</span><span class='line'><span class="nf">mov</span>    <span class="p">(</span><span class="o">%</span><span class="nb">rax</span><span class="p">),</span><span class="o">%</span><span class="nb">rax</span>
+</span><span class='line'><span class="nf">mov</span>    <span class="o">-</span><span class="mh">0x8</span><span class="p">(</span><span class="o">%</span><span class="nb">rbp</span><span class="p">),</span><span class="o">%</span><span class="nb">rdx</span>
+</span><span class='line'><span class="nf">mov</span>    <span class="o">%</span><span class="nb">rdx</span><span class="p">,</span><span class="o">%</span><span class="nb">rdi</span>
+</span><span class='line'><span class="nf">callq</span>  <span class="o">*%</span><span class="nb">rax</span>
+</span><span class='line'><span class="nf">leaveq</span>
+</span><span class='line'><span class="nf">retq</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Putting irrelevant parts aside, there are four instructions involved in virtual function call:</p>
+
+<ol>
+<li>Load vtable base address: <code>mov    (%rax),%rax</code></li>
+<li>Apply offset to get address of the function to call: <code>add    $0x10,%rax</code></li>
+<li>Read the address of the function: <code>mov    (%rax),%rax</code></li>
+<li>Perform indirect call: <code>callq  *%rax</code></li>
+</ol>
+
+
+<p>With optimization turned on, GCC omits a frame pointer, gets rid of one extra memory load, does not move around parameters on the stack. The code is much better, yet the most expensive operations are still there:</p>
+
+<figure class='code'><figcaption><span>Equivalent code in x86_64 assembler (optimised)</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='nasm'><span class='line'>   <span class="nf">mov</span>    <span class="p">(</span><span class="o">%</span><span class="nb">rdi</span><span class="p">),</span><span class="o">%</span><span class="nb">rax</span>
+</span><span class='line'>   <span class="nf">mov</span>    <span class="mh">0x10</span><span class="p">(</span><span class="o">%</span><span class="nb">rax</span><span class="p">),</span><span class="o">%</span><span class="nb">rax</span>
+</span><span class='line'>   <span class="nf">jmpq</span>   <span class="o">*%</span><span class="nb">rax</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>In more complex scenarios, such as multiple inheritance, compiler might also need to adjust an the value of <code>this</code> pointer that is implicitly passed to the virtual function so that it points to a correct base class in the inheritance hierarchy. One more extra level of indirection might also be needed in case of virtual inheritance.</p>
+
+<h2>Optimizations</h2>
+
+<p>There are a few optimizations that compilers can do to improve the runtime performance when it comes to virtual dispatch.</p>
+
+<h3>Extracting the Function Pointer</h3>
+
+<p>Calling a virtual function involves multiple steps. In case when virtual function is called multiple times, such as calling the function in a loop or subsequently calling the same function of the same object, compiler optimizes the code by performing the following steps just once:</p>
+
+<ol>
+<li>Loading the member pointer from a virtual table. It consists of a function pointer and information needed to adjust <code>this</code> pointer.</li>
+<li>Adjusting <code>this</code> pointer.</li>
+<li>Extracting a function pointer from member pointer.</li>
+</ol>
+
+
+<p>Then compilers simply perform the fourth step by calling a function using an extracted function pointer with adjusted <code>this</code> pointer.</p>
+
+<h4>GCC Extension</h4>
+
+<p>The function pointer extraction is &ldquo;unsafe&rdquo; and &ldquo;dangerous&rdquo; and done by the compiler automatically, behind the scenes. GCC, unlike other compilers, provides a non-standard extension for brave developers who know what they are doing, so that they can do this manually. It is part of pointer-to-member function (PMF) conversion functionality and is described in §7.6:</p>
+
+<blockquote><p><strong>7.6 Extracting the function pointer from a bound pointer to member function</strong></p>
+
+<p>In C++, pointer to member functions (PMFs) are implemented using a wide pointer of sorts to handle all the possible call mechanisms; the PMF needs to store information about how to adjust the <code>this</code> pointer, and if the function pointed to is virtual, where to find the vtable, and where in the vtable to look for the member function. If you are using PMFs in an inner loop, you should really reconsider that decision. If that is not an option, you can extract the pointer to the function that would be called for a given object/PMF pair and call it directly inside the inner loop, to save a bit of time.</p>
+
+<p>Note that you still pay the penalty for the call through a function pointer; on most modern architectures, such a call defeats the branch prediction features of the CPU. This is also true of normal virtual function calls.</p>
+
+<p>The syntax for this extension is</p>
+
+<pre><code>extern A a;
+extern int (A::*fp)();
+typedef int (*fptr)(A *);
+
+fptr p = (fptr)(a.*fp);
+</code></pre>
+
+<p>For PMF constants (i.e. expressions of the form <code>&amp;Klasse::Member</code>), no object is needed to obtain the address of the function. They can be converted to function pointers directly:</p>
+
+<pre><code>fptr p1 = (fptr)(&amp;A::foo);
+</code></pre>
+
+<p>You must specify <code>-Wno-pmf-conversions</code> to use this extension.</p></blockquote>
+
+<h4>Manual PMF</h4>
+
+<p>This is also possible to do with other compilers, though in a lot more dangerous manner. For example, having a member pointer and knowing the ABI of a given platform (for example, Itanium C++  ABI describes member pointers &ldquo;layout&rdquo; in §2.3 <a href="http://refspecs.linuxbase.org/cxxabi-1.83.html#member-pointers"><em>Member Pointers</em></a>), programmers can &ldquo;extract&rdquo; <code>this</code> adjustment information as well as raw function pointer, essentially performing PMF manually.</p>
+
+<h3>Devirtualization</h3>
+
+<p>In order to reduce the overhead and improve runtime performance, optimizing compilers attempt to convert calls to virtual functions to direct calls. This is done both within a procedure and interprocedurally as part of indirect inlining and interprocedural constant propagation.</p>
+
+<p>This optimization technique is implemented by most production grade C++ compilers. For example, both GCC and clang perform this optimization. To demonstrate what it does, let&rsquo;s say we got a piece of code written by a third-party company that does a lot of great things and looks like this:</p>
+
+<figure class='code'><figcaption><span>A great API</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">struct</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="o">~</span><span class="n">A</span><span class="p">()</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kr">inline</span> <span class="kt">int</span> <span class="nf">do_something</span><span class="p">(</span><span class="n">A</span><span class="o">&amp;</span> <span class="n">obj</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">obj</span><span class="p">.</span><span class="n">foo</span><span class="p">();</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>At this point, there isn&rsquo;t much that can be done because the end-user use case is unknown at this stage. But let&rsquo;s say the user of the above API writes the following program:</p>
+
+<figure class='code'><figcaption><span>A great API end-usage</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">struct</span> <span class="nl">B</span> <span class="p">:</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="o">~</span><span class="n">B</span><span class="p">()</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">B</span> <span class="n">b</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">do_something</span><span class="p">(</span><span class="n">b</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>By looking at the code, it is obvious that class <code>B</code> is the final class in the inheritance hierarchy. Therefore, when <code>do_something()</code> function is called, calling <code>B</code>&rsquo;s <code>foo()</code> method directly would result in a functional equivalent of calling it through the virtual table.</p>
+
+<p>When compiling the above program with optimization turned on, compiler takes that information into account. Since compilers has a definition of <code>do_something()</code> function body, a wise compiler chooses to perform a direct call or even inline the body of a derived class&rsquo;s virtual function, which in the above case is <code>B::foo()</code>.</p>
+
+<p>Interestingly enough, since all of the code is known to the compiler, it optimizes the program further, eventually reducing it to just a few CPU instructions:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='nasm'><span class='line'><span class="nl">_main:</span>
+</span><span class='line'>  <span class="nf">mov</span>    <span class="nb">eax</span><span class="p">,</span><span class="mh">0x1</span>
+</span><span class='line'>  <span class="nf">ret</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>From the above observation we can draw a conclusion that when compiler has all of the information needed, it optimizes away the virtual dispatch.</p>
+
+<h3>Link Time Optimization</h3>
+
+<p>Needless to say that the above example is very simple and naive. In real-life it is unlikely that <code>do_something()</code> function body will be known. Because it was chosen to use virtual dispatch instead of template meta-programming, body of the function is likely complex and resides in a compiled object file. In that case compiler would not be able to deduce the information it needs to perform devirtualization. This makes this optimization unlikely to occur in real-life.</p>
+
+<p>There is a way to make it work though. Both GCC and clang provide a feature called Link Time Optimization (aka LTO). When this feature is enabled, compilers generate object files in intermediate language. GCC uses <a href="http://gcc.gnu.org/onlinedocs/gccint/GIMPLE.html">GIMPLE</a>  for this purpose while Clang is using <a href="http://llvm.org/docs/BitCodeFormat.html">LLVM bitcode</a>. Such &ldquo;intermediate&rdquo; object files can later be used by the compiler to perform intermodular optimizations. At the same time, source code is not required to be distributed shown, which makes it great for paranoid software vendors. Intermodular optimizations, which in case of LTO are performed at linking stage, allow the compiler to inline functions defined in separate object files or, what&rsquo;s most important in our case, perform devirtualization across different translation units.</p>
+
+<p>Getting back to our simple example, given that user program is stored in <code>file1.cc</code> and <code>do_something()</code> function is defined in <code>file2.cc</code>, compiler does not perform devirtualization. However, when both files are compiled with LTO enabled, the resulting program is optimized down to two CPU instructions. Here is an example of compiling and linking two separate files with LTO using GCC:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='sh'><span class='line'><span class="nv">$ </span>g++ -Wall -O3 -flto -c ./file1.cc
+</span><span class='line'><span class="nv">$ </span>g++ -Wall -O3 -flto -c ./file2.cc
+</span><span class='line'><span class="nv">$ </span>g++ -Wall -O3 -flto ./file1.o ./file2.o -o prog
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The only time when this won&rsquo;t work is when the code is provided in a form of shared object because LTO does not work across shared object boundaries.</p>
+
+<p>So if you plan on providing a library that must use a virtual dispatch and is performance critical to the point where tradeoffs of the virtual dispatch start to matter, consider distributing the code in a form of pre-compiled static library built with LTO support.</p>
+
+<h3>C++11 Final Keyword</h3>
+
+<p>Sometimes compilers are not able to determine that a class is a final instance in the inheritance hierarchy. Consider the following code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">struct</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="o">~</span><span class="n">A</span><span class="p">()</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="nl">B</span> <span class="p">:</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="o">~</span><span class="n">B</span><span class="p">()</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">do_something</span><span class="p">(</span><span class="n">B</span><span class="o">&amp;</span> <span class="n">b</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">b</span><span class="p">.</span><span class="n">foo</span><span class="p">();</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>In the above example, compiler does not know whether some other classes could inherit from class <code>B</code> or not. Therefore, it would not devirtualize the invocation of <code>b.foo()</code> when generating the code for <code>do_something()</code> function body.</p>
+
+<p>If, however, nothing else inherits from <code>B</code>, then programmers might want to consider using a <code>final</code> keyword that was introduced in C++11. Once the class <code>B</code> is marked as <code>final</code>, compiler knows that <code>B</code> is the final instance in the inheritance tree and immediately optimizes away all indirect calls.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="k">struct</span> <span class="n">B</span> <span class="k">final</span> <span class="o">:</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="o">~</span><span class="n">B</span><span class="p">()</span> <span class="p">{}</span>
+</span><span class='line'>    <span class="k">virtual</span> <span class="kt">int</span> <span class="n">foo</span><span class="p">()</span> <span class="p">{</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>Devirtualization in C</h3>
+
+<p>Even though C language does not have a concept of virtual dispatch built into the language, compilers do recognize this concept and can still optimize away all indirect calls. Both GCC and clang have compiled a simple <a href="#c_vtable_example">C virtual dispatch example</a> program into, well, almost nothing. Here is what Clang generated:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="mo">00000000004004</span><span class="n">b0</span> <span class="o">&lt;</span><span class="n">main</span><span class="o">&gt;:</span>
+</span><span class='line'>  <span class="mi">4004</span><span class="nl">b0</span><span class="p">:</span>       <span class="mi">31</span> <span class="n">c0</span>                   <span class="n">xor</span>    <span class="n">eax</span><span class="p">,</span><span class="n">eax</span>
+</span><span class='line'>  <span class="mi">4004</span><span class="nl">b2</span><span class="p">:</span>       <span class="n">c3</span>                      <span class="n">ret</span>
+</span><span class='line'>  <span class="mi">4004</span><span class="nl">b3</span><span class="p">:</span>       <span class="mi">66</span> <span class="mi">2</span><span class="n">e</span> <span class="mf">0f</span> <span class="mf">1f</span> <span class="mi">84</span> <span class="mo">00</span> <span class="mo">00</span>    <span class="n">nop</span>    <span class="n">WORD</span> <span class="n">PTR</span> <span class="nl">cs</span><span class="p">:[</span><span class="n">rax</span><span class="o">+</span><span class="n">rax</span><span class="o">*</span><span class="mi">1</span><span class="o">+</span><span class="mh">0x0</span><span class="p">]</span>
+</span><span class='line'>  <span class="mi">4004</span><span class="nl">ba</span><span class="p">:</span>       <span class="mo">00</span> <span class="mo">00</span> <span class="mo">00</span>
+</span><span class='line'>  <span class="mi">4004</span><span class="nl">bd</span><span class="p">:</span>       <span class="mf">0f</span> <span class="mf">1f</span> <span class="mo">00</span>                <span class="n">nop</span>    <span class="n">DWORD</span> <span class="n">PTR</span> <span class="p">[</span><span class="n">rax</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And here is what GCC have done:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="mo">0000000000400400</span> <span class="o">&lt;</span><span class="n">main</span><span class="o">&gt;:</span>
+</span><span class='line'>  <span class="mi">400400</span><span class="o">:</span>       <span class="mi">31</span> <span class="n">c0</span>                   <span class="n">xor</span>    <span class="n">eax</span><span class="p">,</span><span class="n">eax</span>
+</span><span class='line'>  <span class="mi">400402</span><span class="o">:</span>       <span class="n">c3</span>                      <span class="n">ret</span>
+</span><span class='line'>  <span class="mi">400403</span><span class="o">:</span>       <span class="mi">90</span>                      <span class="n">nop</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span>Thanks for reading!</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='nasm'><span class='line'><span class="nl">_the_end:</span>
+</span><span class='line'>  <span class="nf">as</span> <span class="nb">al</span><span class="nv">ways</span>
+</span><span class='line'>  <span class="nf">thanks</span> <span class="nv">for</span>
+</span><span class='line'>  <span class="nf">reading</span>
+</span><span class='line'>  <span class="nf">nop</span>
+</span><span class='line'>  <span class="nf">nop</span>
+</span></code></pre></td></tr></table></div></figure>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Your Name</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2013-12-15T21:12:00-05:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2013</span></span> <span class='time'>9:12 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/tech/'>tech</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://ul1tka.github.io/blog/2013/12/15/devirtualize/" data-via="" data-counturl="http://ul1tka.github.io/blog/2013/12/15/devirtualize/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2013/12/07/coding-hungover/" title="Previous Post: Coding While Hungover">&laquo; Coding While Hungover</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2013/12/15/devirtualize/">C++ Devirtualization</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/12/07/coding-hungover/">Coding While Hungover</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/12/03/smart-getopt/">Smart Command Line Options Parsing</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/05/01/constant/">How Constant Is a Constant?</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2013/04/28/wide-pointers/">Why C++ Member Function Pointers Are 16 Bytes Wide</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2015 - Your Name -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

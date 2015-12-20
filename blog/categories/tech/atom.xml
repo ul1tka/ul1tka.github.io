@@ -1,0 +1,1289 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Tech | My Octopress Blog]]></title>
+  <link href="http://ul1tka.github.io/blog/categories/tech/atom.xml" rel="self"/>
+  <link href="http://ul1tka.github.io/"/>
+  <updated>2015-12-20T16:04:22-05:00</updated>
+  <id>http://ul1tka.github.io/</id>
+  <author>
+    <name><![CDATA[Your Name]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[C++ Devirtualization]]></title>
+    <link href="http://ul1tka.github.io/blog/2013/12/15/devirtualize/"/>
+    <updated>2013-12-15T21:12:00-05:00</updated>
+    <id>http://ul1tka.github.io/blog/2013/12/15/devirtualize</id>
+    <content type="html"><![CDATA[<p>Using a virtual dispatch might get relatively expensive in terms of clock cycles due to multiple levels of <a href="http://en.wikipedia.org/wiki/Indirection">indirections</a> including <a href="http://en.wikipedia.org/wiki/Indirect_branch">indirect branching</a> as well as <a href="http://gcc.gnu.org/onlinedocs/gcc/Bound-member-functions.html"><code>this</code> pointer adjustment</a>. Wise programmers do not use virtual dispatch without a good reason but oftentimes it is required either by design or when creating non-template reusable components/libraries and the final implementation of some parts of the program is not known.</p>
+
+<p>Optimizing compilers do a great deal of work trying to optimize virtual dispatch as much as possible, sometimes even eliminating it in the end program entirely.  Let&rsquo;s take a quick look at how compilers implement virtual dispatch, how it can be optimized away and go over a few tricks that programmers can do to achieve better runtime performance.</p>
+
+<h2>Virtual Dispatch Mechanics</h2>
+
+<p>Implementation of the virtual dispatch in C++ is not covered by the language standard. It is up to compiler to decide how to implement it. All of the compilers that I&rsquo;ve worked with implement it using a <a href="http://en.wikipedia.org/wiki/Virtual_method_table">virtual method table</a> concept. The details of an exact implementation tend to get very complex once multiple inheritance, virtual inheritance and optimization gets involved. For utmost simple cases, one can think of a straightforward implementation where a base class has a pointer to an array of function pointers. To demonstrate this, let&rsquo;s write a functional equivalent of the below C++ program in C.</p>
+
+<pre><code class="c++ Simple C++ Example Using Virtual Dispatch">struct A {
+    virtual ~A() {}
+    virtual int foo() { return 0; }
+};
+
+int main() {
+    A a;
+    return a.foo();
+}
+</code></pre>
+
+<p>Assuming that no optimization is performed, the above code can be described in C like this:</p>
+
+<p><a name="c_vtable_example"></a>
+<figure class='code'><figcaption><span>Simple Virtual Table Example in C</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="k">struct</span> <span class="n">A</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;/&lt;</span><span class="n">em</span><span class="o">&gt;</span>
+</span><span class='line'> <span class="o">*</span> <span class="n">A</span> <span class="n">virtual</span> <span class="n">table</span> <span class="k">for</span> <span class="n">class</span> <span class="n">A</span> <span class="n">implicitly</span> <span class="n">generated</span> <span class="n">by</span> <span class="n">C</span><span class="o">++</span> <span class="n">compiler</span><span class="p">.</span>
+</span><span class='line'> <span class="o">*</span> <span class="n">It</span> <span class="n">consists</span> <span class="n">of</span> <span class="n">two</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">methods</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="o">-</span> <span class="n">a</span> <span class="n">pointer</span> <span class="n">to</span> <span class="n">a</span> <span class="n">destructor</span> <span class="n">of</span> <span class="n">class</span> <span class="n">A</span>
+</span><span class='line'> <span class="o">*</span> <span class="n">and</span> <span class="n">a</span> <span class="n">pointer</span> <span class="n">to</span> <span class="n">A</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">foo</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="n">virtual</span> <span class="n">method</span> <span class="n">implementation</span><span class="p">.</span> <span class="n">In</span> <span class="n">both</span> <span class="n">cases</span>
+</span><span class='line'> <span class="o">*</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">this</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="n">pointer</span> <span class="n">is</span> <span class="n">a</span> <span class="n">pointer</span> <span class="n">to</span> <span class="n">base</span> <span class="n">class</span> <span class="n">A</span> <span class="n">which</span> <span class="n">is</span> <span class="n">passed</span> <span class="n">to</span> <span class="n">methods</span>
+</span><span class='line'> <span class="o">*</span> <span class="n">implicitly</span><span class="p">.</span>
+</span><span class='line'> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+</span><span class='line'><span class="k">struct</span> <span class="n">A_vtable</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kt">void</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">destructor</span><span class="p">)(</span><span class="k">struct</span> <span class="n">A</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">this</span><span class="p">);</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">foo</span><span class="p">)(</span><span class="k">struct</span> <span class="n">A</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span><span class="n">this</span><span class="p">);</span>
+</span><span class='line'><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="k">struct</span> <span class="n">A</span> <span class="p">{</span>
+</span><span class='line'>        <span class="o">/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">A</span> <span class="n">class</span> <span class="n">implicitly</span> <span class="n">gets</span> <span class="n">a</span> <span class="o">&amp;</span><span class="n">ldquo</span><span class="p">;</span><span class="n">vtable</span><span class="o">&amp;</span><span class="n">rdquo</span><span class="p">;</span> <span class="n">pointer</span> <span class="n">as</span> <span class="n">its</span> <span class="n">first</span> <span class="n">field</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+</span><span class='line'>        <span class="k">const</span> <span class="k">struct</span> <span class="n">A_vtable</span> <span class="o">*</span><span class="n">vtable</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Implementation</span> <span class="n">of</span> <span class="n">A</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">destructor</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+</span><span class='line'><span class="kt">void</span> <span class="n">A_destructor</span><span class="p">(</span><span class="k">struct</span> <span class="n">A</span> <span class="o">*</span><span class="n">this</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Implementation</span> <span class="n">of</span> <span class="n">A</span><span class="o">&amp;</span><span class="n">rsquo</span><span class="p">;</span><span class="n">s</span> <span class="n">foo</span> <span class="n">method</span><span class="p">.</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">A_foo</span><span class="p">(</span><span class="k">struct</span> <span class="n">A</span> <span class="o">*</span><span class="n">this</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;/&lt;</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">Virtual</span> <span class="n">table</span> <span class="k">for</span> <span class="n">class</span> <span class="n">A</span> <span class="n">generated</span> <span class="n">by</span> <span class="n">the</span> <span class="n">compiler</span> <span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;/</span>
+</span><span class='line'><span class="k">static</span> <span class="k">const</span> <span class="k">struct</span> <span class="n">A_vtable</span> <span class="n">A_vtable_instance</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>        <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">A_destructor</span><span class="p">,</span>
+</span><span class='line'>        <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">A_foo</span>
+</span><span class='line'><span class="p">};</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="kt">int</span> <span class="n">main</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">ret</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">struct</span> <span class="n">A</span> <span class="n">a</span><span class="p">;</span><span class="o">&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">pre</span><span class="o">&gt;&lt;</span><span class="n">code</span><span class="o">&gt;</span>    <span class="cm">/*</span>
+</span><span class='line'><span class="cm">     * Initialize class A by setting its virtual table pointer.</span>
+</span><span class='line'><span class="cm">     * This pointer can be set to a different &quot;table&quot; instance</span>
+</span><span class='line'><span class="cm">     * in case of derived classes. This happens implicitly during</span>
+</span><span class='line'><span class="cm">     * class construction.</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="n">a</span><span class="p">.</span><span class="n">vtable</span> <span class="o">=</span> <span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">A_vtable_instance</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/* Invoke A&#39;s foo method through the virtual table. */</span>
+</span><span class='line'>    <span class="n">ret</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">vtable</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">foo</span><span class="p">)(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">a</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/*</span>
+</span><span class='line'><span class="cm">     * Call A&#39;s destructor. In our case this happens implicitly</span>
+</span><span class='line'><span class="cm">     * because of RAII.</span>
+</span><span class='line'><span class="cm">     * http://en.wikipedia.org/wiki/Resource_Acquisition_Is_Initialization</span>
+</span><span class='line'><span class="cm">     */</span>
+</span><span class='line'>    <span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="n">vtable</span><span class="o">-&amp;</span><span class="n">gt</span><span class="p">;</span><span class="n">destructor</span><span class="p">)(</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">a</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="cm">/* Return from main */</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">ret</span><span class="p">;</span>
+</span><span class='line'><span class="o">&lt;/</span><span class="n">code</span><span class="o">&gt;&lt;/</span><span class="n">pre</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;</span><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>By looking at how virtual functions are called, it becomes apparent that invocation of a virtual function has some overhead. Basically, three steps need to be performed to call a virtual function:</p>
+
+<ol>
+<li>Offset must be applied to a virtual table in order to obtain an address of a function to call.</li>
+<li>A pointer to a virtual table must be dereferenced to read the address of a function.</li>
+<li>An <a href="http://en.wikipedia.org/wiki/Indirect_branch">indirect call</a> must be made to call a function by address stored in register.</li>
+</ol>
+
+
+<h3>x86_64 Machine Code</h3>
+
+<p>To demonstrate this, let&rsquo;s look at the disassembled function that gets an instance of class <code>A</code> by reference and calls its virtual <code>foo()</code> method:</p>
+
+<pre><code class="c++ Simple Invocation of Virtual Method in C++">int call(A&amp; obj) {
+    return obj.foo();
+}
+</code></pre>
+
+<p>GCC would generate the following code for x86_64 with all optimizations turned off:</p>
+
+<pre><code class="nasm Equivalent code in x86_64 assembler (unoptimised)">push   %rbp
+mov    %rsp,%rbp
+sub    $0x10,%rsp
+mov    %rdi,-0x8(%rbp)
+mov    -0x8(%rbp),%rax
+mov    (%rax),%rax
+add    $0x10,%rax
+mov    (%rax),%rax
+mov    -0x8(%rbp),%rdx
+mov    %rdx,%rdi
+callq  *%rax
+leaveq 
+retq   
+</code></pre>
+
+<p>Putting irrelevant parts aside, there are four instructions involved in virtual function call:</p>
+
+<ol>
+<li>Load vtable base address: <code>mov    (%rax),%rax</code></li>
+<li>Apply offset to get address of the function to call: <code>add    $0x10,%rax</code></li>
+<li>Read the address of the function: <code>mov    (%rax),%rax</code></li>
+<li>Perform indirect call: <code>callq  *%rax</code></li>
+</ol>
+
+
+<p>With optimization turned on, GCC omits a frame pointer, gets rid of one extra memory load, does not move around parameters on the stack. The code is much better, yet the most expensive operations are still there:</p>
+
+<pre><code class="nasm Equivalent code in x86_64 assembler (optimised)">   mov    (%rdi),%rax
+   mov    0x10(%rax),%rax
+   jmpq   *%rax
+</code></pre>
+
+<p>In more complex scenarios, such as multiple inheritance, compiler might also need to adjust an the value of <code>this</code> pointer that is implicitly passed to the virtual function so that it points to a correct base class in the inheritance hierarchy. One more extra level of indirection might also be needed in case of virtual inheritance.</p>
+
+<h2>Optimizations</h2>
+
+<p>There are a few optimizations that compilers can do to improve the runtime performance when it comes to virtual dispatch.</p>
+
+<h3>Extracting the Function Pointer</h3>
+
+<p>Calling a virtual function involves multiple steps. In case when virtual function is called multiple times, such as calling the function in a loop or subsequently calling the same function of the same object, compiler optimizes the code by performing the following steps just once:</p>
+
+<ol>
+<li>Loading the member pointer from a virtual table. It consists of a function pointer and information needed to adjust <code>this</code> pointer.</li>
+<li>Adjusting <code>this</code> pointer.</li>
+<li>Extracting a function pointer from member pointer.</li>
+</ol>
+
+
+<p>Then compilers simply perform the fourth step by calling a function using an extracted function pointer with adjusted <code>this</code> pointer.</p>
+
+<h4>GCC Extension</h4>
+
+<p>The function pointer extraction is &ldquo;unsafe&rdquo; and &ldquo;dangerous&rdquo; and done by the compiler automatically, behind the scenes. GCC, unlike other compilers, provides a non-standard extension for brave developers who know what they are doing, so that they can do this manually. It is part of pointer-to-member function (PMF) conversion functionality and is described in §7.6:</p>
+
+<blockquote><p><strong>7.6 Extracting the function pointer from a bound pointer to member function</strong></p>
+
+<p>In C++, pointer to member functions (PMFs) are implemented using a wide pointer of sorts to handle all the possible call mechanisms; the PMF needs to store information about how to adjust the <code>this</code> pointer, and if the function pointed to is virtual, where to find the vtable, and where in the vtable to look for the member function. If you are using PMFs in an inner loop, you should really reconsider that decision. If that is not an option, you can extract the pointer to the function that would be called for a given object/PMF pair and call it directly inside the inner loop, to save a bit of time.</p>
+
+<p>Note that you still pay the penalty for the call through a function pointer; on most modern architectures, such a call defeats the branch prediction features of the CPU. This is also true of normal virtual function calls.</p>
+
+<p>The syntax for this extension is</p>
+
+<pre><code>extern A a;
+extern int (A::*fp)();
+typedef int (*fptr)(A *);
+
+fptr p = (fptr)(a.*fp);
+</code></pre>
+
+<p>For PMF constants (i.e. expressions of the form <code>&amp;Klasse::Member</code>), no object is needed to obtain the address of the function. They can be converted to function pointers directly:</p>
+
+<pre><code>fptr p1 = (fptr)(&amp;A::foo);
+</code></pre>
+
+<p>You must specify <code>-Wno-pmf-conversions</code> to use this extension.</p></blockquote>
+
+<h4>Manual PMF</h4>
+
+<p>This is also possible to do with other compilers, though in a lot more dangerous manner. For example, having a member pointer and knowing the ABI of a given platform (for example, Itanium C++  ABI describes member pointers &ldquo;layout&rdquo; in §2.3 <a href="http://refspecs.linuxbase.org/cxxabi-1.83.html#member-pointers"><em>Member Pointers</em></a>), programmers can &ldquo;extract&rdquo; <code>this</code> adjustment information as well as raw function pointer, essentially performing PMF manually.</p>
+
+<h3>Devirtualization</h3>
+
+<p>In order to reduce the overhead and improve runtime performance, optimizing compilers attempt to convert calls to virtual functions to direct calls. This is done both within a procedure and interprocedurally as part of indirect inlining and interprocedural constant propagation.</p>
+
+<p>This optimization technique is implemented by most production grade C++ compilers. For example, both GCC and clang perform this optimization. To demonstrate what it does, let&rsquo;s say we got a piece of code written by a third-party company that does a lot of great things and looks like this:</p>
+
+<pre><code class="c++ A great API">struct A {
+    virtual ~A() {}
+    virtual int foo() { return 0; }
+};
+
+inline int do_something(A&amp; obj) {
+    return obj.foo();
+}
+</code></pre>
+
+<p>At this point, there isn&rsquo;t much that can be done because the end-user use case is unknown at this stage. But let&rsquo;s say the user of the above API writes the following program:</p>
+
+<pre><code class="c++ A great API end-usage">struct B : A {
+    virtual ~B() {}
+    virtual int foo() { return 1; }
+};
+
+int main() {
+    B b;
+    return do_something(b);
+}
+</code></pre>
+
+<p>By looking at the code, it is obvious that class <code>B</code> is the final class in the inheritance hierarchy. Therefore, when <code>do_something()</code> function is called, calling <code>B</code>&rsquo;s <code>foo()</code> method directly would result in a functional equivalent of calling it through the virtual table.</p>
+
+<p>When compiling the above program with optimization turned on, compiler takes that information into account. Since compilers has a definition of <code>do_something()</code> function body, a wise compiler chooses to perform a direct call or even inline the body of a derived class&rsquo;s virtual function, which in the above case is <code>B::foo()</code>.</p>
+
+<p>Interestingly enough, since all of the code is known to the compiler, it optimizes the program further, eventually reducing it to just a few CPU instructions:</p>
+
+<pre><code class="nasm">_main:
+    mov    eax,0x1
+    ret    
+</code></pre>
+
+<p>From the above observation we can draw a conclusion that when compiler has all of the information needed, it optimizes away the virtual dispatch.</p>
+
+<h3>Link Time Optimization</h3>
+
+<p>Needless to say that the above example is very simple and naive. In real-life it is unlikely that <code>do_something()</code> function body will be known. Because it was chosen to use virtual dispatch instead of template meta-programming, body of the function is likely complex and resides in a compiled object file. In that case compiler would not be able to deduce the information it needs to perform devirtualization. This makes this optimization unlikely to occur in real-life.</p>
+
+<p>There is a way to make it work though. Both GCC and clang provide a feature called Link Time Optimization (aka LTO). When this feature is enabled, compilers generate object files in intermediate language. GCC uses <a href="http://gcc.gnu.org/onlinedocs/gccint/GIMPLE.html">GIMPLE</a>  for this purpose while Clang is using <a href="http://llvm.org/docs/BitCodeFormat.html">LLVM bitcode</a>. Such &ldquo;intermediate&rdquo; object files can later be used by the compiler to perform intermodular optimizations. At the same time, source code is not required to be distributed shown, which makes it great for paranoid software vendors. Intermodular optimizations, which in case of LTO are performed at linking stage, allow the compiler to inline functions defined in separate object files or, what&rsquo;s most important in our case, perform devirtualization across different translation units.</p>
+
+<p>Getting back to our simple example, given that user program is stored in <code>file1.cc</code> and <code>do_something()</code> function is defined in <code>file2.cc</code>, compiler does not perform devirtualization. However, when both files are compiled with LTO enabled, the resulting program is optimized down to two CPU instructions. Here is an example of compiling and linking two separate files with LTO using GCC:</p>
+
+<pre><code class="sh">$ g++ -Wall -O3 -flto -c ./file1.cc
+$ g++ -Wall -O3 -flto -c ./file2.cc
+$ g++ -Wall -O3 -flto ./file1.o ./file2.o -o prog
+</code></pre>
+
+<p>The only time when this won&rsquo;t work is when the code is provided in a form of shared object because LTO does not work across shared object boundaries.</p>
+
+<p>So if you plan on providing a library that must use a virtual dispatch and is performance critical to the point where tradeoffs of the virtual dispatch start to matter, consider distributing the code in a form of pre-compiled static library built with LTO support.</p>
+
+<h3>C++11 Final Keyword</h3>
+
+<p>Sometimes compilers are not able to determine that a class is a final instance in the inheritance hierarchy. Consider the following code:</p>
+
+<pre><code class="c++">struct A {
+    virtual ~A() {}
+    virtual int foo() { return 0; }
+};
+
+struct B : A {
+    virtual ~B() {}
+    virtual int foo() { return 1; }
+};
+
+int do_something(B&amp; b) {
+    b.foo();
+}
+</code></pre>
+
+<p>In the above example, compiler does not know whether some other classes could inherit from class <code>B</code> or not. Therefore, it would not devirtualize the invocation of <code>b.foo()</code> when generating the code for <code>do_something()</code> function body.</p>
+
+<p>If, however, nothing else inherits from <code>B</code>, then programmers might want to consider using a <code>final</code> keyword that was introduced in C++11. Once the class <code>B</code> is marked as <code>final</code>, compiler knows that <code>B</code> is the final instance in the inheritance tree and immediately optimizes away all indirect calls.</p>
+
+<pre><code class="c++">struct B final : A {
+    virtual ~B() {}
+    virtual int foo() { return 1; }
+};
+</code></pre>
+
+<h3>Devirtualization in C</h3>
+
+<p>Even though C language does not have a concept of virtual dispatch built into the language, compilers do recognize this concept and can still optimize away all indirect calls. Both GCC and clang have compiled a simple <a href="#c_vtable_example">C virtual dispatch example</a> program into, well, almost nothing. Here is what Clang generated:</p>
+
+<pre><code>00000000004004b0 &lt;main&gt;:
+  4004b0:       31 c0                   xor    eax,eax
+  4004b2:       c3                      ret    
+  4004b3:       66 2e 0f 1f 84 00 00    nop    WORD PTR cs:[rax+rax*1+0x0]
+  4004ba:       00 00 00 
+  4004bd:       0f 1f 00                nop    DWORD PTR [rax]
+</code></pre>
+
+<p>And here is what GCC have done:</p>
+
+<pre><code>0000000000400400 &lt;main&gt;:
+  400400:       31 c0                   xor    eax,eax
+  400402:       c3                      ret    
+  400403:       90                      nop
+</code></pre>
+
+<pre><code class="nasm Thanks for reading!">_the_end:
+    as always
+    thanks for
+    reading
+    nop
+    nop
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Smart Command Line Options Parsing]]></title>
+    <link href="http://ul1tka.github.io/blog/2013/12/03/smart-getopt/"/>
+    <updated>2013-12-03T08:47:00-05:00</updated>
+    <id>http://ul1tka.github.io/blog/2013/12/03/smart-getopt</id>
+    <content type="html"><![CDATA[<p>A countless number of command line programs have been written since the invention of computers. Most of them parse command line options and spew out errors and usage messages if a user enters an unknown option or simply makes a typo. Examples are not far to seek. Make a typo trying to commit your changes into SVN repository and <a href="http://en.wikipedia.org/wiki/Apache_Subversion">Subversion</a> would bail out with errors:</p>
+
+<pre><code class="bash">$ svn commir
+Unknown command: 'commir'
+Type 'svn help' for usage.
+</code></pre>
+
+<p>There are command line tools that are standing out among others, impress with their intelligence and deliver unforgettable user experience.</p>
+
+<p>One of them is <a href="http://git-scm.com/">Git</a>. If it encounters an unknown option, it can analyze it, guess what user meant and suggest correct options:</p>
+
+<pre><code class="bash">$ git commir
+git: 'commir' is not a git command. See 'git --help'.
+
+Did you mean this?
+    commit
+</code></pre>
+
+<p>To see this kind of feature in a command line tool is a pleasant surprise and could catch user’s attention. But if we take one step back and try to reckon programs with similar features, there will be a lot. Any decent word processors would have spell-checking feature that not only can detect mistakes but also suggest a correct spelling. Proofreading tools. Search engines often guess what we are looking for as well.</p>
+
+<p>So what kind of sorcery is this?</p>
+
+<h2>String Metrics</h2>
+
+<p>All of the similar algorithms are based on string metric algorithms that measure similarity or dissimilarity between two strings for <a href="http://en.wikipedia.org/wiki/Approximate_string_matching">approximate matching</a> or comparison and in <a href="http://en.wikipedia.org/wiki/Approximate_string_matching">fuzzy string searching</a>. The similarity or dissimilarity between two strings of text is commonly known as string distance.</p>
+
+<p>There are <a href="http://en.wikipedia.org/wiki/String_metrics">a number of different string metrics algorithms</a>. The most widely known string metric is the Levenshtein Distance, also known as Edit Distance.</p>
+
+<p>Informally, the Levenshtein distance between two words is the minimum number of single-character edits (insertion, deletion, substitution) required to change one word into the other. One could apply this algorithm to determine which one of the possible words is the most similar by comparing a number of character edits it requires to transform one word into another.</p>
+
+<h2>How Git Does This</h2>
+
+<p>Since <a href="http://git-scm.com">Git</a> is <a href="http://git-scm.com/about/free-and-open-source">free and open source</a>, we can check how it does the command line argument suggestion, and what algorithm is being used for that.</p>
+
+<p>The Git source code can be downloaded or viewed online at <a href="https://github.com/git/git">https://github.com/git/git</a>. All of the command line options handling is implemented in <a href="https://github.com/git/git/blob/master/help.c">help.c</a> file, and the suggestion is being made by <code>help_unknown_cmd()</code> function on line 293.</p>
+
+<p>After quickly grasping through the code, it turns out that Git is using a <a href="http://en.wikipedia.org/wiki/Damerau%E2%80%93Levenshtein_distance">Damerau–Levenshtein distance algorithm</a> to calculate similarities between an unknown command and a list of supported commands. The implementation of this algorithm consists of two small files - <a href="https://github.com/git/git/blob/master/levenshtein.h">levenshtein.h</a> and <a href="https://github.com/git/git/blob/master/levenshtein.c">levenshtein.c</a>.</p>
+
+<h2>Use It In Your Program</h2>
+
+<p>To see how hard it would be to implement something similar, we have decided to borrow the algorithm implementation and use it to implement a simple command line tool in C++.</p>
+
+<p>The basic idea is to accept command line options from a user and function that corresponds to a command name. In case the command name is unknown, use Damerau-Levenshtein algorithm and compare the unknown command to a list of supported ones. The algorithm returns an integer number that is a string distance. The bigger it is, less similar two strings are. Therefore, after comparing all of the strings, we simply store a result in <code>std::map</code> and take the first element as the most likely command user meant to type, but didn’t quite get it right.</p>
+
+<p>Since we are more focused on C++ rather than C, the first is to transform levenshtein.c into a C++ code (alternatively, a <a href="http://www.parashift.com/c++-faq/mixing-c-and-cpp.html">mixing of C and C++</a> code could have been used) and get rid of Git-specific <code>xmalloc()</code> function. Here are the changes:</p>
+
+<pre><code class="diff">--- ../git/levenshtein.c    2013-12-03 19:09:52.000000000 -0500
++++ levenshtein.cc  2013-12-03 19:49:40.000000000 -0500
+@@ -1,5 +1,6 @@
+-#include "cache.h"
+-#include "levenshtein.h"
++#include "levenshtein.hh"
++#include &lt;cstdlib&gt; // for malloc and free
++#include &lt;cstring&gt; // for strlen
+
+ /*
+  * This function implements the Damerau-Levenshtein algorithm to
+@@ -42,9 +43,9 @@
+        int w, int s, int a, int d)
+ {
+    int len1 = strlen(string1), len2 = strlen(string2);
+-   int *row0 = xmalloc(sizeof(int) * (len2 + 1));
+-   int *row1 = xmalloc(sizeof(int) * (len2 + 1));
+-   int *row2 = xmalloc(sizeof(int) * (len2 + 1));
++   int *row0 = (int*)malloc(sizeof(int) * (len2 + 1));
++   int *row1 = (int*)malloc(sizeof(int) * (len2 + 1));
++   int *row2 = (int*)malloc(sizeof(int) * (len2 + 1));
+    int i, j;
+
+    for (j = 0; j &lt;= len2; j++)
+</code></pre>
+
+<p>And a simple command line tool that uses Git&rsquo;s <code>levenshtein()</code> function:</p>
+
+<pre><code class="c++">//
+// An example of using Damerau-Levenshtein algorithm
+// to suggest a correct command if user enters something
+// that we don't know how to handle.
+//
+
+#include &lt;cstdlib&gt;
+#include &lt;string&gt;
+#include &lt;map&gt;
+#include &lt;unordered_map&gt;
+#include &lt;iostream&gt;
+#include "levenshtein.h"
+
+// Define command handler function type.
+static void on_help() {
+    std::cout &lt;&lt; "Sure thing! What can I do for you?\n";
+}
+
+static void on_version() {
+    std::cout &lt;&lt; "I am not versioned, sorry.\n";
+}
+
+static void on_verbose() {
+    std::cout &lt;&lt; "If you need verbose, go read Twitter!\n";
+}
+
+static void on_say() {
+    std::cout &lt;&lt; "Oops, my speech speed synthesizer is broken :(\n";
+}
+
+// This function does not need an introduction.
+int main(int argc, const char *argv[]) {
+    // Check that we have at least one argument.
+    if (argc &lt; 2) {
+        std::cerr &lt;&lt; "Please enter a command\n";
+        return EXIT_FAILURE;
+    }
+
+    // Deduce command from command line.
+    std::string cmd{argv[1]};
+
+    // Create a list of commands.
+    const std::unordered_map&lt;
+        std::string,
+        std::function&lt;void()&gt;
+    &gt; cmd_map{
+        { "help", &amp;on_help },
+        { "say", &amp;on_say },
+        { "version", &amp;on_version },
+        { "verbose", &amp;on_verbose }
+    };
+
+    // Find a command.
+    auto cmd_it = cmd_map.find(cmd);
+    if (cmd_it != cmd_map.end()) {
+        // Command was found. Run the handler and exit.
+        (cmd_it-&gt;second)();
+        return EXIT_SUCCESS;
+    }
+
+    // If we get there, the command is unknown.
+    // First, tell it to the user.
+    std::cerr &lt;&lt; "Unknown command: " &lt;&lt; cmd &lt;&lt; '\n';
+
+    // Use Damerau-Levenshtein algorithm to get similarity
+    // score with all of the commands we support, then pick
+    // the best few to suggest to the user.
+    std::multimap&lt;
+        int /* Levenshtein distance, less is better. */,
+        std::string /* Supported command */
+    &gt; dist;
+
+    for (auto&amp; p : cmd_map) {
+        dist.emplace(
+            levenshtein(
+                cmd.c_str(), // Command entered by the user.
+                p.first.c_str(), // One of the supported commands.
+                0, // swap cost
+                2, // substitution cost
+                1, // insertion cost
+                3  // deletion cost
+            ),
+            p.first
+        );
+    }
+
+    // Take the first best guess (lowest distance = better match).
+    // Suggest a list of commands with the same Levenshtein distance.
+    // This can be tweaked to show more options, etc..
+    if (!dist.empty()) {
+        auto best_score = dist.begin()-&gt;first;
+        std::cerr &lt;&lt; "Did you mean one of these?\n";
+        for (auto&amp; p : dist) {
+            if (p.first != best_score) {
+                // For more option, one could use something like
+                // `p.first - best_score &gt; N` where N is max.
+                // allowed difference.
+                break;
+            }
+            std::cout &lt;&lt; '\t' &lt;&lt; p.second &lt;&lt; '\n';
+        }
+    }
+
+    return EXIT_FAILURE;
+}
+</code></pre>
+
+<p>Compile two files into a binary using Clang:</p>
+
+<pre><code class="bash">clang++ -Wall -Wextra -pedantic -std=c++11 -o test ./smart_help.cc
+</code></pre>
+
+<p>The tool supports only three commands — &ldquo;help&rdquo;, &ldquo;version&rdquo;, &ldquo;verbose&rdquo; and &ldquo;say&rdquo;. Let&rsquo;s say user only types &ldquo;ver&rdquo;, in that case it correctly suggest two possible alternatives:</p>
+
+<pre><code class="bash">$ ./test ver
+Unknown command: ver
+Did you mean one of these?
+    verbose
+    version
+</code></pre>
+
+<p>It doesn&rsquo;t lose face when handling &ldquo;he&rdquo; and &ldquo;s&rdquo; as well:</p>
+
+<pre><code>$ ./test he
+Unknown command: he
+Did you mean one of these?
+    help
+$ ./test s
+Unknown command: s
+Did you mean one of these?
+    say
+</code></pre>
+
+<p>Of course, it is possible to tweak and tune this program further - do more error checking, play with different cost weights, do less or more aggressive guessing and so one.</p>
+
+<p>The main point is – it isn’t all that difficult to make your command line option parsing more intelligent and user friendly by using this or similar algorithms. A great <a href="http://en.wikipedia.org/wiki/User_experience">user experience</a> matters a lot.</p>
+
+<p>Maybe one day this would become a standard feature of option parsing libraries like <a href="http://www.boost.org/doc/libs/release/doc/html/program_options.html">Boost’s Program Options</a>, Python’s <a href="http://docs.python.org/2.7/library/argparse.html">argparse</a> and even GNU <a href="http://www.gnu.org/software/libc/manual/html_node/Getopt.html">getopt</a>.</p>
+
+<p>As always, thanks for reading!</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[How Constant Is a Constant?]]></title>
+    <link href="http://ul1tka.github.io/blog/2013/05/01/constant/"/>
+    <updated>2013-05-01T00:00:00-04:00</updated>
+    <id>http://ul1tka.github.io/blog/2013/05/01/constant</id>
+    <content type="html"><![CDATA[<pre><code class="c++">#include &lt;string.h&gt;
+#include &lt;stdio.h&gt;
+
+int main()
+{
+    char *data = "Bender is always sober.";
+    printf("Before: %s\n", data);
+    memcpy(data + 17, "drunk!", 6);
+    printf("After: %s\n", data);
+    return 0;
+}
+</code></pre>
+
+<p>Do you remember those good old days of DOS when programmers used to write code like this? This trick was working like a champ back then. Today, however, you will only see this kind of code in questions asked by students burning the midnight oil learning C by examples from some really old books and perhaps in some embedded systems running on processors without a memory protection unit. The rest of code monkeys like you and me do not write this kind of code because the compilers generate a warning, the language standard says it invokes an undefined behavior and at the end of the day this is a pretty straightforward way to generate a segmentation fault and have our program bite on a <code>SIGSEGV</code> signal sent by the operating system’s kernel and take a solid core dump.</p>
+
+<p>Why this doesn’t work now and how it used to work before? It is really simple — string literals like one used in the example are placed in a data segment of the program, the operating system then loads the program into memory and makes that memory write-protected by the means of <a href="http://en.wikipedia.org/wiki/Memory_management_unit">MMU</a>. DOS was not doing this, and so it worked fine in DOS times. It also works today if operating system doesn’t take care of this and write-protect the memory, or if the CPU has no MMU.</p>
+
+<p>This all sounds nice and dandy but it raises one good question — are any constant objects actually constant? Ask any <a href="http://en.wikipedia.org/wiki/High-level_programming_language">HLL</a> programmer if it is possible to modify a constant string literal on a modern Intel architecture. The answer would likely be «No!» At least my colleagues said so, and all of them are brilliant developers with decades of experience. But every time I hear — «No, that’s just not possible», I take it as a challenge and cannot rest until I prove that it is. Nothing is impossible. So trust no one. The truth is that in fact it is possible. Check this out (do not try to repeat this at work):</p>
+
+<pre><code class="c++">#include &lt;sys/mman.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stddef.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;stdio.h&gt;
+
+int take_me_back_to_DOS_times(const void *ptr, size_t len);
+
+int main()
+{
+    const char *data = "Bender is always sober.";
+    printf("Before: %s\n", data);
+    if (take_me_back_to_DOS_times(data, strlen(data)) != 0)
+        perror("Time machine appears to be broken!");
+    memcpy((char *)data + 17, "drunk!", 6);
+    printf("After: %s\n", data);
+
+    return 0;
+}
+
+int take_me_back_to_DOS_times(const void *ptr, size_t len)
+{
+    int pagesize;
+    unsigned long long pg_off;
+    void *page;
+
+    pagesize = sysconf(_SC_PAGE_SIZE);
+    if (pagesize &lt; 0)
+        return -1;
+    pg_off = (unsigned long long)ptr % (unsigned long long)pagesize;
+    page = ((char *)ptr - pg_off);
+    if (mprotect(page, len + pg_off, PROT_READ | PROT_WRITE | PROT_EXEC) == -1)
+        return -1;
+    return 0;
+}
+</code></pre>
+
+<p>Hopefully, the code is self-explanatory. But if in doubt — read a manual page about <a href="http://man7.org/linux/man-pages/man2/mprotect.2.html"><code>mprotect</code></a> system call. I have touched on memory protection in the beginning and how operating system is using it to make string literals constant. The above example uses the reverse approach and makes the memory writable again (just like a time machine taking the program to old good DOS times). The thing is, our commodity computers work with only two kinds of memory — <a href="http://en.wikipedia.org/wiki/Static_random-access_memory">SRAM</a> memory of CPU caches, which is fast and expensive, and a DRAM, which is slow but very cheap. Neither of those two kinds of memory is read-only. Some of the processors have neither memory protection nor memory management units, and it won’t even be possible to write-protect the memory to make it “look” constant (which can also be unprotected as well, as we have just witnessed). Therefore, there are no constants from the hardware point of view.</p>
+
+<p>So what’s up with all those constant objects in programming languages? Theoretical computer science has a concept of <a href="http://en.wikipedia.org/wiki/Const-correctness"><em>const-correctness</em></a>, which is incorporated into many different languages. For instance, Java takes a lot of care to not allow programmers to modify constant objects. So do C and C++, for example. But the keyword here is “theoretically”.</p>
+
+<blockquote><p>In theory, there is no difference between theory and practice. But, in practice, there is.</p>
+
+<p>— <a href="http://en.wikiquote.org/wiki/Jan_L._A._van_de_Snepscheut">Jan L. A. van de Snepscheut</a></p></blockquote>
+
+<p>Unlike higher-level languages like Java, both C and C++ are down to hardware and it doesn’t take a genius to simply get a memory address of some object and manipulate memory directly. And when you do that, there is nothing constant. This is not to mention that there are some legitimate cases when casting away the const is fine and well defined.</p>
+
+<p>Don’t get me wrong. I am not saying it doesn’t make any sense or you should not use it. You definitely should. And if you violate the const-correctness rules then you are definitely taking a lot of risk. Not because it won’t work but because it may work differently from how you expect it to work. If that happens, you are the only one to blame because the standard simply say — «I told you, that’s undefined behavior!» But when it comes to theoretical computer science and const-correctness, there is one thing that bothers me — it is implemented only halfway. Consider standard C++ strings, for example. Let’s say I have a string that is declared as constant. According to C++ rules, I cannot cast away that const-ness. However, we all know that <code>std::string</code> stores its contents in dynamic memory, and therefore the string itself is originally non-constant. Now, everybody can interpret the laws and standards differently, but I find this code pretty legitimate and do not see how it is an undefined behavior:</p>
+
+<pre><code class="c++">#include &lt;cstring&gt;
+#include &lt;string&gt;
+#include &lt;iostream&gt;
+
+static void print(const std::string &amp;str)
+{
+    // OK, the ”str” is constant, but the pointer to
+    // string it holds was never declared as constant,
+    // so we can cast it away and modify its contents
+    // using ”const_cast”:
+    char *p = const_cast&lt;char *&gt;(str.c_str());
+    memcpy(p + 17, "drunk!", 6);
+    std::cout &lt;&lt; str &lt;&lt; std::endl;
+}
+
+int main()
+{
+    const std::string str = "Bender is always sober.";
+    print(str);
+    return 0;
+}
+</code></pre>
+
+<p>I also don’t like the idea of having somebody else modify my constant object using <a href="http://en.cppreference.com/w/cpp/language/const_cast"><code>const_cast</code></a> when I don’t want to, but C++ still says it is legal (because the object wasn’t originally declared as “const”):</p>
+
+<pre><code class="c++">#include &lt;string&gt;
+#include &lt;iostream&gt;
+
+static void some_bad_function_yet_legal(const std::string &amp;str)
+{
+    // OK, the ”str” is constant, but it wasn't declared
+    // as such in the first place, so we can use
+    // “const_cast” to change it:
+    std::string &amp;s = const_cast&lt;std::string &amp;&gt;(str);
+    s.resize(6);
+}
+
+int main()
+{
+    std::string str = "Bender is always sober.";
+
+    // Call a function that accepts a constant reference,
+    // who would think it modifies the string, right?
+    some_bad_function_yet_legal(str);
+
+    std::cout &lt;&lt; str &lt;&lt; std::endl;
+    return 0;
+}
+</code></pre>
+
+<p>Sometimes it is legal, sometimes it is pronounced undefined behavior. Either way you end up with a broken program unless somebody took care and employed the MMU to protect your memory. It becomes even worse if it isn’t your code and you have to debug and chase the error, which could be pretty hard to do (luckily, we can have GDB <a href="http://stackoverflow.com/questions/58851/can-i-set-a-breakpoint-on-memory-access-in-gdb">break on memory access</a>). As an experiment, I wrote a little custom allocator that can protect and unprotect the memory. It makes it possible, for example, to make your string constant in a way that an attempt to modify its content would have the process receive <code>SIGSEGV</code>:</p>
+
+<pre><code class="c++">#include &lt;sys/mman.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;cstddef&gt;
+#include &lt;cstdlib&gt;
+#include &lt;cstring&gt;
+#include &lt;stdexcept&gt;
+#include &lt;iostream&gt;
+
+template &lt;typename T&gt;
+struct my_allocator {
+    typedef std::size_t    size_type;
+    typedef std::ptrdiff_t difference_type;
+    typedef T*             pointer;
+    typedef const T*       const_pointer;
+    typedef T&amp;             reference;
+    typedef const T&amp;       const_reference;
+    typedef T              value_type;
+
+    template &lt;typename U&gt;
+    struct rebind { typedef my_allocator&lt;U&gt; other; };
+
+    pointer allocate(size_type n, const_pointer hint = nullptr)
+    {
+        void *ptr;
+        int pagesize = sysconf(_SC_PAGE_SIZE);
+        if (pagesize &lt; 0)
+            throw std::runtime_error("Cannot obtain a page size");
+        if (posix_memalign(&amp;ptr, (std::size_t)pagesize, n * sizeof(T)) != 0)
+            throw std::bad_alloc();
+        return static_cast&lt;pointer&gt;(ptr);
+    }
+
+    void deallocate(pointer ptr, size_type s)
+    {
+        std::free(ptr);
+    }
+
+    static void protect(const_pointer ptr, size_type len)
+    {
+        int pagesize = sysconf(_SC_PAGE_SIZE);
+        if (pagesize &lt; 0)
+            throw std::runtime_error("Cannot obtain a page size");
+        std::uintptr_t pg_off = (std::uintptr_t)ptr % (std::uintptr_t)pagesize;
+        void *page = ((char *)ptr - pg_off);
+        if (mprotect(page, len + pg_off, PROT_READ) == -1)
+            throw std::runtime_error("Can't make memory read-only!");
+    }
+
+    static void unprotect(const_pointer ptr, size_type len)
+    {
+        int pagesize = sysconf(_SC_PAGE_SIZE);
+        if (pagesize &lt; 0)
+            throw std::runtime_error("Cannot obtain a page size");
+        std::uintptr_t pg_off = (std::uintptr_t)ptr % (std::uintptr_t)pagesize;
+        void *page = ((char *)ptr - pg_off);
+        if (mprotect(page, len + pg_off, PROT_READ | PROT_WRITE) == -1)
+            throw std::runtime_error("Can't make memory read-only!");
+    }
+};
+
+template &lt;typename T&gt;
+bool operator == (const my_allocator&lt;T&gt; &amp;, const my_allocator&lt;T&gt; &amp;) {
+    return true;
+}
+
+template &lt;typename T&gt;
+bool operator != (const my_allocator&lt;T&gt; &amp;, const my_allocator&lt;T&gt; &amp;) {
+    return false;
+}
+
+typedef std::basic_string&lt; char, std::char_traits&lt;char&gt;,
+                           my_allocator&lt;char&gt; &gt; my_string;
+
+static void some_bad_function(const my_string &amp;str)
+{
+    // OK, the ”str” is constant, but the pointer to
+    // string it holds was never declared as constant,
+    // so we can cast it away and modify its contents
+    // using ”const_cast”:
+    char *p = const_cast&lt;char *&gt;(str.c_str());
+    std::memcpy(p + 17, "drunk!", 6);
+}
+
+int main()
+{
+    try {
+        const my_string str = "Bender is always sober.";
+
+        my_string::allocator_type::protect(str.c_str(), str.size());
+        some_bad_function(str); // This call results in SIGSEGV thanks to memory protection!
+        std::cout &lt;&lt; str &lt;&lt; std::endl;
+        my_string::allocator_type::unprotect(str.c_str(), str.size());
+    } catch(const std::exception &amp;e) {
+        std::cerr &lt;&lt; "ERROR: " &lt;&lt; e.what() &lt;&lt; std::endl;
+        return EXIT_FAILURE;
+    }
+}
+</code></pre>
+
+<p>This of course doesn’t make it impossible to unprotect that memory. To make it so, we’d need some more sophisticated access control that possibly employs protection rings, etc. But this is as far as I am willing to go. I wish we had something like this done automatically when we declare or pass variables around as “const”. But this is not going to happen because moaning with memory protection is very expensive operation that would, if implemented, slow down the program and make it pretty much unusable. Maybe one day we’d get a special hardware that would make it a reality. But for now, let’s keep shooting ourselves in the foot.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Why C++ Member Function Pointers Are 16 Bytes Wide]]></title>
+    <link href="http://ul1tka.github.io/blog/2013/04/28/wide-pointers/"/>
+    <updated>2013-04-28T00:00:00-04:00</updated>
+    <id>http://ul1tka.github.io/blog/2013/04/28/wide-pointers</id>
+    <content type="html"><![CDATA[<p>When talking about pointers, we generally assume it is something that can be represented by <code>void*</code> pointer which has a size of 8 bytes on the x86_64 architecture. For instance, here is an excerpt from a <a href="http://en.wikipedia.org/wiki/X86-64#Architectural_features">Wikipedia article about x86_64</a>:</p>
+
+<blockquote><p>Pushes and pops on the stack are always in 8-byte strides, and <strong>pointers are 8 bytes wide</strong>.</p></blockquote>
+
+<p>From the CPU point of view, pointer is nothing but a memory address, and all memory addresses are represented by 64-bit on the x86_64, so the assumption about 8 bytes is correct. It is also not that hard to verify this by simply printing sizes of pointers of different types:</p>
+
+<pre><code class="c++">#include &lt;iostream&gt;
+
+int main() {
+    std::cout &lt;&lt;
+        "sizeof(int*)      == " &lt;&lt; sizeof(int*) &lt;&lt; "\n"
+        "sizeof(double*)   == " &lt;&lt; sizeof(double*) &lt;&lt; "\n"
+        "sizeof(void(*)()) == " &lt;&lt; sizeof(void(*)()) &lt;&lt; std::endl;
+}
+</code></pre>
+
+<p>Compile and run the above program, and it will tell that all pointers are of size 8:</p>
+
+<pre><code>$ uname -i
+x86_64
+$ g++ -Wall ./example.cc 
+$ ./a.out 
+sizeof(int*)      == 8
+sizeof(double*)   == 8
+sizeof(void(*)()) == 8
+</code></pre>
+
+<p>In C++, however, there is one exception — pointer to a member function. Interestingly enough, the size of a pointer to a member function is twice the size of any other pointer. This can be easily verified with this simple program which would print “16”:</p>
+
+<pre><code class="c++">#include &lt;iostream&gt;
+
+struct Foo {
+    void bar() const { }
+};
+
+int main() {
+    std::cout &lt;&lt; sizeof(&amp;Foo::bar) &lt;&lt; std::endl;
+}
+</code></pre>
+
+<p>Does this mean that Wikipedia is wrong? No, not at all. From the hardware point of view all pointers are still 8 bytes wide. So what is a pointer to a member function then? It is a feature of the C++ language, a concept that does not map directly to hardware and is being implemented in runtime (by compilers) resulting in a slight overhead that oftentimes incurs a performance penalty. The C++ language specification is not concerned with implementation details very much and there is nothing explaining this type of pointers. Luckily, there is Itanium C++ ABI specification that devotes itself to standardizing implementation details of the C++ runtime — it explains, for example, how virtual tables, RTTI and exceptions are implemented, and it also explains member pointers in §2.3:</p>
+
+<blockquote><p>A pointer to member function is a pair as follows:</p>
+
+<p>ptr:</p>
+
+<p>For a non-virtual function, this field is a simple function pointer. For a virtual function, it is 1 plus the virtual table offset (in bytes) of the function, represented as a ptrdiff_t. The value zero represents a NULL pointer, independent of the adjustment field value below.</p>
+
+<p>adj:</p>
+
+<p>The required adjustment to this, represented as a ptrdiff_t.</p></blockquote>
+
+<p>So a member function pointer is 16 bytes instead of 8 because along with a simple function pointer it also must store the information about how to adjust “this” pointer (something that is always passed to non-static member functions implicitly). What ABI spec does not say is why and when such an adjustment is required. It might not be that obvious at first. Let’s take a look at the following class hierarchy:</p>
+
+<pre><code class="c++">struct A {
+    void foo() const { }
+    char pad0[32];
+};
+
+struct B {
+    void bar() const { }
+    char pad2[64];
+};
+
+struct C : A, B
+{ };
+</code></pre>
+
+<p>Both A and B have a non-static member functions and a data member. Both of those methods can access data member of their class through an implicitly passed “this” pointer. In order to access any data member, the offset from the base address of the class object containing it, represented as a ptrdiff_t, is applied to “this” pointer. Things start to get complicated with multiple inheritance. What happens when we have a class C inherit both A and B? The compiler would take A and B and place them together in memory, where B comes after A. Therefore, methods of class A and methods of class B would “see” a different value of “this” pointer. This can be easily verified in practice, for example:</p>
+
+<pre><code class="c++">#include &lt;iostream&gt;
+
+struct A {
+    void foo() const {
+        std::cout &lt;&lt; "A's this: " &lt;&lt; this &lt;&lt; std::endl;
+    }
+    char pad0[32];
+};
+
+struct B {
+    void bar() const {
+        std::cout &lt;&lt; "B's this: " &lt;&lt; this &lt;&lt; std::endl;
+    }
+    char pad2[64];
+};
+
+struct C : A, B
+{ };
+
+int main()
+{
+    C obj;
+    obj.foo();
+    obj.bar();
+}
+</code></pre>
+
+<pre><code>$ g++ -Wall -o test ./test.cc &amp;&amp; ./test
+A's this: 0x7fff57ddfb48
+B's this: 0x7fff57ddfb68
+</code></pre>
+
+<p>As you can see, “this” pointer’s value passed to B’s method is greater than one passed to A’s method by 32 bytes – an exact size of class A. But what happens when we have the following function that calls a method of class C by pointer?</p>
+
+<pre><code class="c++">void call_by_ptr(const C &amp;obj, void (C::*mem_func)() const) {
+    (obj.*mem_func)();
+}
+</code></pre>
+
+<p>Depending on what method is being called, a different value of “this” must be passed. But the “call_by_ptr” function doesn’t know whether it got a pointer to “foo()” or a pointer to “bar()”. The only time when this information is available is when address of either of those methods is taken. And that’s why a pointer to a member function also has information about how to adjust “this” before calling a method. Now, let’s put all of that together into a simple program that demonstrates what is going on “under the hood”:</p>
+
+<pre><code class="c++">#include &lt;iostream&gt;
+
+struct A {
+    void foo() const {
+        std::cout &lt;&lt; "A's this:\t" &lt;&lt; this &lt;&lt; std::endl;
+    }
+    char pad0[32];
+};
+
+struct B {
+    void bar() const {
+        std::cout &lt;&lt; "B's this:\t" &lt;&lt; this &lt;&lt; std::endl;
+    }
+    char pad2[64];
+};
+
+struct C : A, B
+{ };
+
+void call_by_ptr(const C &amp;obj, void (C::*mem_func)() const)
+{
+    void *data[2];
+    std::memcpy(data, &amp;mem_func, sizeof(mem_func));
+    std::cout &lt;&lt; "------------------------------\n"
+        "Object ptr:\t" &lt;&lt; &amp;obj &lt;&lt;
+        "\nFunction ptr:\t" &lt;&lt; data[0] &lt;&lt;
+        "\nPointer adj:\t" &lt;&lt; data[1] &lt;&lt; std::endl;
+    (obj.*mem_func)();
+}
+
+int main()
+{
+    C obj;
+    call_by_ptr(obj, &amp;C::foo);
+    call_by_ptr(obj, &amp;C::bar);
+}
+</code></pre>
+
+<p>The above program prints the following:</p>
+
+<pre><code>------------------------------
+Object ptr: 0x7fff535dfb28
+Function ptr:   0x10c620cac
+Pointer adj:    0
+A's this:   0x7fff535dfb28
+------------------------------
+Object ptr: 0x7fff535dfb28
+Function ptr:   0x10c620cfe
+Pointer adj:    0x20
+B's this:   0x7fff535dfb48
+</code></pre>
+
+<p>Hopefully that clears things up a little bit.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[C++ Exceptions, Stack Trace and GDB Automation]]></title>
+    <link href="http://ul1tka.github.io/blog/2013/04/16/throw-stacktrace/"/>
+    <updated>2013-04-16T00:00:00-04:00</updated>
+    <id>http://ul1tka.github.io/blog/2013/04/16/throw-stacktrace</id>
+    <content type="html"><![CDATA[<p>The tricky part about any exception is that the stack is already unwinded by the time exception is caught and there is no easy way to figure out from which part of the code it was thrown. Have you ever caught an exception that has no information that can be used to find where the problem is? The one that says «this should never happen» or even has no text at all. Hopefully, this doesn’t happen to you very often. But if you work with a large C++ codebase with tons of different components written by different developers then sooner or later it would definitely happen. It can be quite disappointing and take a lot of time going through the pile of somebody else’s code trying to figure out what went wrong. So you must be prepared. I might be a little bit unlucky in this regard – this happened to me a lot, so I decided to share a few ways for overcoming this type of situations.</p>
+
+<h2>Backtrace API</h2>
+
+<p>Quite a few C runtime libraries provide a mechanism to examine the current thread’s call stack. It consists of three functions declared in <code>execinfo.h</code> header:</p>
+
+<pre><code class="c">int backtrace(void** array, int size);
+
+char** backtrace_symbols(void* const* array, int size);
+
+void backtrace_symbols_fd(void* const* array, int size, int fd);
+</code></pre>
+
+<p>Using those functions, one can access the stack trace at any given point of program execution. Here is a simple example that prints the stack to standard output:</p>
+
+<pre><code class="c++">#include &lt;execinfo.h&gt;
+#include &lt;iostream&gt;
+
+int main()
+{
+    void *callstack[256];
+    int frames = ::backtrace(
+        callstack, sizeof(callstack) / sizeof(callstack[0]));
+    char **symbols = ::backtrace_symbols(callstack, frames);
+    std::cout &lt;&lt; "Stack Trace:\n";
+    for (int i = 0; i &lt; frames; ++i) {
+        std::cout &lt;&lt; '\t' &lt;&lt; symbols[i] &lt;&lt; '\n';
+    }
+    std::free(symbols);
+}
+</code></pre>
+
+<p>This method can be used to get the stack trace before the exception is thrown and before the stack is unwinded. In order to do that, one could define a custom exception class that grabs the stack trace in its constructor. For example:</p>
+
+<pre><code class="c++">#include &lt;execinfo.h&gt;
+#include &lt;string&gt;
+#include &lt;stdexcept&gt;
+#include &lt;cstdlib&gt;
+#include &lt;iostream&gt;
+
+class Exception : public std::exception {
+  public:
+    Exception() {
+        grab_backtrace();
+    }
+
+    explicit Exception(const std::string &amp;reason) : reason_(reason) {
+        reason_.append(1, '\n');
+        grab_backtrace();
+    }
+
+    virtual ~Exception() throw() { }
+
+    virtual const char *what() const throw() {
+        return reason_.c_str();
+    }
+
+  private:
+    void grab_backtrace() {
+        void *callstack[256];
+        int frames = ::backtrace(
+            callstack, sizeof(callstack) / sizeof(callstack[0]));
+        char **symbols = backtrace_symbols(callstack, frames);
+        try {
+            reason_.append("Stack Trace:");
+            for (int i = 0; i &lt; frames; ++i) {
+                reason_.append("\n\t").append(symbols[i]);
+            }
+        } catch(const std::exception &amp;) {
+            std::free(symbols);
+            throw;
+        }
+        std::free(symbols);
+    }
+
+    std::string reason_;
+};
+
+static void do_something(int n, int i = 0)
+{
+    if (i &lt; n) {
+        do_something(n, ++i);
+    } else {
+        throw Exception("Recursion limit exceeded");
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    try {
+        do_something(argc &gt; 1 ? std::atoi(argv[1]) : 10, argc);
+    } catch(const std::exception &amp;e) {
+        std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+        return EXIT_FAILURE;
+    }
+}
+</code></pre>
+
+<p>So far so good! Here is an example of running the above program:</p>
+
+<pre><code>$ clang++ -Wall -pedantic ./test.cpp &amp;&amp; ./a.out 3
+Recursion limit exceeded
+Stack Trace:
+    0   a.out                0x00000001034fa7af _ZN9Exception14grab_backtraceEv + 63
+    1   a.out                0x00000001034fa6f4 _ZN9ExceptionC2ERKSs + 116
+    2   a.out                0x00000001034fa56d _ZN9ExceptionC1ERKSs + 29
+    3   a.out                0x00000001034fa33c _Z12do_somethingii + 140
+    4   a.out                0x00000001034fa2df _Z12do_somethingii + 47
+    5   a.out                0x00000001034fa42d main + 93
+    6   libdyld.dylib        0x00007fff935e27e1 start + 0
+</code></pre>
+
+<p>Unfortunately, there are a few problems with this approach. Firstly, there no file names and no line numbers. Secondly, this approach requires to use the “Exception” class as a base class of all exceptions in the project (well, at least for those you want to get a stack trace for), which indeed can be very problematic if not impossible. But even if all of the above is fine with you, this approach may still not work out for you because frame pointers can be omitted in optimized builds. For example, omitting frame pointers is a default behavior of recent GCC compilers for x86_64 platforms (which can also be turned on/off using <code>-fomit-frame-pointer</code> option). Our call stack becomes useless if frame pointers are omitted:</p>
+
+<pre><code>$ clang++ -Wall -fomit-frame-pointer ./test.cpp &amp;&amp; ./a.out 3
+Recursion limit exceeded
+Stack Trace:
+    0   a.out                0x0000000105eca82d _ZN9Exception14grab_backtraceEv + 61
+</code></pre>
+
+<p>Depending on the system, there could be other requirements in order to make this API work. For example, GNU runtime requires you to specify “-rdynamic” flag to instruct the linker to add all symbols, not only used ones, to the dynamic symbol table. So don’t forget to read a manual page for this API in your system before using this.</p>
+
+<h2>__FILE__ and __LINE__</h2>
+
+<p>C++ has many <a href="http://gcc.gnu.org/onlinedocs/cpp/Standard-Predefined-Macros.html">standard predefined macros</a>. <code>__FILE__</code> and <code>__LINE__</code> macros are those two that come handy in order to identify a point in a program:</p>
+
+<p><code>__FILE__</code>  macros expands to the name of the current input file, in the form of a C string constant. This is the path by which the preprocessor opened the file, not the short name specified in ‘#include’ or as the input file name argument. For example, “/usr/local/include/myheader.h” is a possible expansion of this macros.</p>
+
+<p><code>__LINE__</code> macros expands to the current input line number, in the form of a decimal integer constant. While we call it a predefined macro, it’s a pretty strange macro, since its “definition” changes with each new line of source code.|</p>
+
+<p>Using the above macros, it is possible to include both file and line information along with exception’s text, or maybe as additional member fields of any given exception class. There are multiple choices. Here is an example of one of possible implementations:</p>
+
+<pre><code class="c++">#include &lt;stdexcept&gt;
+#include &lt;cstdlib&gt;
+#include &lt;iostream&gt;
+
+class Exception : public std::runtime_error {
+  public:
+    template &lt;unsigned int location_len&gt;
+    inline Exception(const char (&amp;location)[location_len],
+                     const std::string &amp;reason)
+        : std::runtime_error(reason + location)
+    { }
+
+    virtual ~Exception() throw() { }
+};
+
+#define MY_THROW_STR_I(Arg) #Arg
+#define MY_THROW_STR(Arg) MY_THROW_STR_I(Arg)
+#define MY_THROW(Type, ...)                                             \
+    do {                                                                \
+        throw Type(" @ "; __FILE__ ";:" MY_THROW_STR(__LINE__), ##__VA_ARGS__); \
+    } while (0)
+
+static void do_something(int n, int i = 0)
+{
+    if (i &lt; n) {
+        do_something(n, ++i);
+    } else {
+        MY_THROW(Exception, "Recursion limit exceeded");
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    try {
+        do_something(argc &gt; 1 ? std::atoi(argv[1]) : 10, argc);
+    } catch(const std::exception &amp;e) {
+        std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+        return EXIT_FAILURE;
+    }
+}
+</code></pre>
+
+<p>When the exception is caught and printed, the source file name and a line numbers are included, which makes it easy to trace the origins of such an exception:</p>
+
+<pre><code>$ ./a.out 
+Recursion limit exceeded @ ./test.cpp:26
+</code></pre>
+
+<p>Of course, this does not include a stack trace. But it works if frame pointers are omitted, tail recursion optimization is applied, or even if all symbol names are stripped out of the executable. There is one problem though — it may not be useful without a stack trace in certain cases. For example, one may declare a helper function used to throw an exception, like this:</p>
+
+<pre><code class="c++">__attribute__((noreturn)) void report_error(const std::string &amp;reason) {
+    MY_THROW(Exception, reason);
+}
+</code></pre>
+
+<p>In that case, the file and line of the exception origins will always be the same even if it was called from different places in the program. So this approach is also not a cure for all diseases.</p>
+
+<h2>GDB Scripting: Automatic Backtrace on Exception Catchpoints</h2>
+
+<p>And the last but not least method is to use <a href="http://www.gnu.org/software/gdb/">GDB debugger</a>. If you are not familiar with this debugger, you definitely should spend some time learning it. It is one of the most powerful tools out there. And it comes extremely handy when dealing with exceptions.</p>
+
+<p><a href="http://sourceware.org/gdb/onlinedocs/gdb/Set-Catchpoints.html">GDB provides special catch points</a>, including those to catch exceptions being thrown, caught or even unhandled. We are interested in exceptions that are being thrown and so must use <code>catch throw</code> command. Here is an example of manually using GDB in order to examine a stack trace before the exception is thrown:</p>
+
+<pre><code>$ gdb -args ./a.out 5
+Reading symbols from /tmp/a.out...done.
+(gdb) catch throw
+Catchpoint 1 (throw)
+(gdb) run
+Starting program: /tmp/a.out 5
+Catchpoint 1 (exception thrown), __cxxabiv1::__cxa_throw (obj=0x6030d0, tinfo=0x401420 , dest=0x401198 )
+    at ../../../../libstdc++-v3/libsupc++/eh_throw.cc:70
+70    header-&gt;exc.unexpectedHandler = __unexpected_handler;
+(gdb) backtrace
+#0  __cxxabiv1::__cxa_throw (obj=0x6030d0, tinfo=0x401420 , dest=0x401198 )
+    at ../../../../libstdc++-v3/libsupc++/eh_throw.cc:70
+#1  0x0000000000400fee in report_error (reason="Recursion limit exceeded") at ./test.cpp:25
+#2  0x000000000040105d in do_something (n=5, i=5) at ./test.cpp:33
+#3  0x000000000040102e in do_something (n=5, i=5) at ./test.cpp:31
+#4  0x000000000040102e in do_something (n=5, i=4) at ./test.cpp:31
+#5  0x000000000040102e in do_something (n=5, i=3) at ./test.cpp:31
+#6  0x00000000004010cb in main (argc=2, argv=0x7fffffffe1f8) at ./test.cpp:40
+(gdb) continue
+Continuing.
+Recursion limit exceeded @ ./test.cpp:25
+[Inferior 1 (process 3865) exited with code 01]
+(gdb) quit
+</code></pre>
+
+<p>At first, this might sound silly because in the real world a program may encounter a lot of exceptions and manually typing “backtrace” and “continue” every type that happens is nothing but a waste of time. But there is one trick — GDB can be automated. There are two ways of doing this — use a batch mode or a more sophisticated <a href="http://sourceware.org/gdb/wiki/PythonGdbTutorial">Python scripting</a>. For our purpose, a batch script will do just fine. Here is a simple script that turns off verbose output and paging, sets up a <code>throw</code> catch point and executes <code>backtrace</code> + <code>continue</code> commands every time the event is caught:</p>
+
+<pre><code>set verbose off
+set pagination off
+catch throw
+commands
+backtrace
+continue
+end
+run
+quit
+</code></pre>
+
+<p>Save the above script into a file, and then run GDB in batch mode telling it to use that file, which in my case is called “gdb_bt_script”:</p>
+
+<pre><code>$ gdb -n -batch -x ./gdb_bt_script --args ./a.out 5
+Catchpoint 1 (throw)
+Catchpoint 1 (exception thrown), __cxxabiv1::__cxa_throw (obj=0x6030d0, tinfo=0x401420 , dest=0x401198 ) at ../../../../libstdc++-v3/libsupc++/eh_throw.cc:70
+70    header-&gt;exc.unexpectedHandler = __unexpected_handler;
+#0  __cxxabiv1::__cxa_throw (obj=0x6030d0, tinfo=0x401420 , dest=0x401198 ) at ../../../../libstdc++-v3/libsupc++/eh_throw.cc:70
+#1  0x0000000000400fee in report_error (reason="Recursion limit exceeded") at ./test.cpp:25
+#2  0x000000000040105d in do_something (n=5, i=5) at ./test.cpp:33
+#3  0x000000000040102e in do_something (n=5, i=5) at ./test.cpp:31
+#4  0x000000000040102e in do_something (n=5, i=4) at ./test.cpp:31
+#5  0x000000000040102e in do_something (n=5, i=3) at ./test.cpp:31
+#6  0x00000000004010cb in main (argc=2, argv=0x7fffffffe1f8) at ./test.cpp:40
+Recursion limit exceeded @ ./test.cpp:25
+[Inferior 1 (process 5849) exited with code 01]
+$ 
+</code></pre>
+
+<p>Whoala! Now we get a full stack trace including function parameters, their values, and file and line numbers. If the program is optimized and has no debug symbols, however, we get a little bit less:</p>
+
+<pre><code>$ gdb -n -batch -x ./gdb_bt_script --args ./a.out 5
+Catchpoint 1 (throw)
+Catchpoint 1 (exception thrown), __cxxabiv1::__cxa_throw (obj=0x6030d0, tinfo=0x401470 , dest=0x401270 ) at ../../../../libstdc++-v3/libsupc++/eh_throw.cc:70
+70    header-&gt;exc.unexpectedHandler = __unexpected_handler;
+#0  __cxxabiv1::__cxa_throw (obj=0x6030d0, tinfo=0x401470 , dest=0x401270 ) at ../../../../libstdc++-v3/libsupc++/eh_throw.cc:70
+#1  0x00000000004010a8 in report_error(std::string const&amp;) ()
+#2  0x000000000040121e in do_something(int, int) ()
+#3  0x0000000000400ef6 in main ()
+Recursion limit exceeded @ ./test.cpp:25
+[Inferior 1 (process 1877) exited with code 01]
+</code></pre>
+
+<p>Yet still a lot more than we get using backtrace API. But the most beautiful part is that this method does not require any code changes and works for pretty much any binary.</p>
+
+<h2>The End</h2>
+
+<p>Those were three fundamental methods that can help to identify a place where exception is thrown from. They are not mutually exclusive. Each has its cons and pros. I personally prefer to use GDB because it doesn’t require a code change, but use other two methods as well, depending on a situation. It is up to you to decide which one to use.</p>
+
+<p>Hope it helps and Good Luck!</p>
+]]></content>
+  </entry>
+  
+</feed>
